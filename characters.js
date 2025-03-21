@@ -11,43 +11,41 @@ function createCharacter(scene) {
     return character;
 }
 
-// Create direction indicator (smiley face)
+// Create direction indicator (eyes)
 function createDirectionIndicator(scene) {
-    // Create smiley face indicator for direction
-    const smileyGeometry = new THREE.CircleGeometry(0.2, 32);
-    const smileyMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
-    const smileyFace = new THREE.Mesh(smileyGeometry, smileyMaterial);
+    // Create a group to hold both eyes
+    const eyesGroup = new THREE.Group();
     
-    // Add eyes and mouth to the smiley
-    const leftEyeGeometry = new THREE.CircleGeometry(0.05, 16);
-    const rightEyeGeometry = new THREE.CircleGeometry(0.05, 16);
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    // Create white spheres for the eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
     
-    const leftEye = new THREE.Mesh(leftEyeGeometry, eyeMaterial);
-    leftEye.position.set(-0.07, 0.05, 0.01);
-    smileyFace.add(leftEye);
+    // Left eye
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.2, 0.3, 0);
+    eyesGroup.add(leftEye);
     
-    const rightEye = new THREE.Mesh(rightEyeGeometry, eyeMaterial);
-    rightEye.position.set(0.07, 0.05, 0.01);
-    smileyFace.add(rightEye);
+    // Right eye
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.2, 0.3, 0);
+    eyesGroup.add(rightEye);
     
-    // Create a smile using a curved line
-    const smileGeometry = new THREE.BufferGeometry();
-    const smileCurve = new THREE.EllipseCurve(
-        0, -0.03, // center
-        0.1, 0.05, // x radius, y radius
-        Math.PI, 0, // start angle, end angle
-        true // clockwise
-    );
-    const smilePoints = smileCurve.getPoints(20);
-    smileGeometry.setFromPoints(smilePoints);
-    const smileMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-    const smile = new THREE.Line(smileGeometry, smileMaterial);
-    smile.position.z = 0.01;
-    smileyFace.add(smile);
+    // Create black pupils
+    const pupilGeometry = new THREE.SphereGeometry(0.06, 12, 12);
+    const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
     
-    scene.add(smileyFace);
-    return smileyFace;
+    // Left pupil
+    const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    leftPupil.position.set(0, 0, 0.09);
+    leftEye.add(leftPupil);
+    
+    // Right pupil
+    const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    rightPupil.position.set(0, 0, 0.09);
+    rightEye.add(rightPupil);
+    
+    scene.add(eyesGroup);
+    return eyesGroup;
 }
 
 // Create push arm for attack animation
@@ -61,14 +59,18 @@ function createPushArm(scene) {
     return pushArm;
 }
 
-// Update smiley face position based on character position and facing direction
-function updateSmileyPosition(smileyFace, character, facingDirection) {
-    // Position smiley face 0.8 units in front of the character in the facing direction
-    smileyFace.position.copy(character.position);
-    smileyFace.position.add(facingDirection.clone().multiplyScalar(0.8));
+// Update eyes position based on character position and facing direction
+function updateSmileyPosition(eyesGroup, character, facingDirection) {
+    // Position eyes directly on top of the character
+    eyesGroup.position.copy(character.position);
     
-    // Make smiley face look in the same direction as the character
-    smileyFace.lookAt(smileyFace.position.clone().add(facingDirection));
+    // Make eyes look in the direction the character is facing
+    const lookAtPos = eyesGroup.position.clone().add(facingDirection);
+    eyesGroup.lookAt(lookAtPos);
+    
+    // Adjust rotation to keep eyes level but looking in the right direction
+    eyesGroup.rotation.x = 0;
+    eyesGroup.rotation.z = 0;
 }
 
 // Update push arm position and rotation
