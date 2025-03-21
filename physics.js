@@ -10,23 +10,26 @@ const PUSH_DURATION = 500; // How long the push effect lasts (in ms)
 const PLATFORM_HALF_WIDTH = 10; // Half width of the platform
 const PLAYER_BOUNDARY = 9.5; // Player movement boundary
 const ENEMY_BOUNDARY = 9; // Enemy movement boundary
+const PLATFORM_HEIGHT = 1; // Height of platform surface
 
 // Apply physics to character
 function applyPhysics(character, velocity, platform) {
-    // Store previous position before applying gravity
+    // Store previous position before applying physics
     const previousY = character.position.y;
     
-    // Apply gravity
-    velocity.y -= GRAVITY;
-    character.position.y += velocity.y * 0.1;
+    // Check if character is on the platform
+    if (!isOnPlatform(character, platform) || velocity.y < 0) {
+        // Apply gravity only if not on platform or already falling
+        velocity.y -= GRAVITY;
+        character.position.y += velocity.y * 0.1;
+    }
     
     // Check if character is on the ground
     // Only set position when falling onto platform from above (velocity.y < 0)
-    // AND the previous position was above the platform
-    if (character.position.y >= platform.position.y + 1 && 
+    if (character.position.y <= platform.position.y + PLATFORM_HEIGHT && 
         velocity.y <= 0 && 
         isOnPlatform(character, platform)) {
-        character.position.y = platform.position.y + 1; // platform height + half character height + half platform height
+        character.position.y = platform.position.y + PLATFORM_HEIGHT; // platform height + half character height
         velocity.y = 0;
     }
     
@@ -40,25 +43,24 @@ function applyPhysics(character, velocity, platform) {
 
 // Apply physics to enemy
 function applyEnemyPhysics(enemy, platform) {
-    // If enemy is not on platform, apply gravity
-    if (!isOnPlatform(enemy, platform)) {
-        // If enemy doesn't have velocity yet, initialize it
-        if (!enemy.userData.velocity) {
-            enemy.userData.velocity = { y: 0 };
-        }
-        
+    // If enemy doesn't have velocity yet, initialize it
+    if (!enemy.userData.velocity) {
+        enemy.userData.velocity = { y: 0 };
+    }
+    
+    // If enemy is not on platform or is already falling, apply gravity
+    // This matches the player physics logic
+    if (!isOnPlatform(enemy, platform) || enemy.userData.velocity.y < 0) {
         // Apply gravity
         enemy.userData.velocity.y -= GRAVITY;
         enemy.position.y += enemy.userData.velocity.y * 0.1;
         
         // Mark enemy as falling
         enemy.userData.isFalling = true;
-    } else if (enemy.position.y <= platform.position.y + enemy.userData.size + 0.5) {
+    } else if (enemy.position.y <= platform.position.y + PLATFORM_HEIGHT) {
         // Enemy is on platform and at or below the correct height
-        enemy.position.y = platform.position.y + enemy.userData.size + 0.5;
-        if (enemy.userData.velocity) {
-            enemy.userData.velocity.y = 0;
-        }
+        enemy.position.y = platform.position.y + PLATFORM_HEIGHT;
+        enemy.userData.velocity.y = 0;
         enemy.userData.isFalling = false;
     }
     
@@ -93,14 +95,23 @@ function applyEnemyPhysics(enemy, platform) {
     return true; // Enemy stays in game
 }
 
-// Check if character is above the platform
+// Check if character is on the platform
 function isOnPlatform(character, platform) {
-    return (
+    // Check horizontal position (x-z coordinates)
+    const isAbovePlatform = (
         character.position.x >= -PLATFORM_HALF_WIDTH && 
         character.position.x <= PLATFORM_HALF_WIDTH && 
         character.position.z >= -PLATFORM_HALF_WIDTH && 
         character.position.z <= PLATFORM_HALF_WIDTH
     );
+    
+    // Check vertical position (y coordinate)
+    // Character is considered on platform if they're at or very slightly above platform height
+    const isAtPlatformHeight = (
+        Math.abs(character.position.y - (platform.position.y + PLATFORM_HEIGHT)) < 0.1
+    );
+    
+    return isAbovePlatform && isAtPlatformHeight;
 }
 
 // Check for collisions between player and enemies
@@ -168,5 +179,5 @@ function pushAttack(character, enemies, facingDirection) {
 
 // Check if player is falling
 function isPlayerFalling(character, velocity, platform) {
-    return character.position.y > platform.position.y + 1.1 && velocity.y < 0;
+    return character.position.y > platform.position.y + PLATFORM_HEIGHT + 0.1 && velocity.y < 0;
 }
