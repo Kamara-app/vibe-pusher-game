@@ -161,19 +161,19 @@ function updateEnemies(enemies, enemySpeed, platform) {
         
         // Keep enemy on platform - only if they're still on the platform
         if (isOnPlatform(enemy, platform)) {
-            if (enemy.position.x < -9) {
-                enemy.position.x = -9;
+            if (enemy.position.x < -ENEMY_BOUNDARY) {
+                enemy.position.x = -ENEMY_BOUNDARY;
                 enemy.userData.direction.x *= -1;
-            } else if (enemy.position.x > 9) {
-                enemy.position.x = 9;
+            } else if (enemy.position.x > ENEMY_BOUNDARY) {
+                enemy.position.x = ENEMY_BOUNDARY;
                 enemy.userData.direction.x *= -1;
             }
             
-            if (enemy.position.z < -9) {
-                enemy.position.z = -9;
+            if (enemy.position.z < -ENEMY_BOUNDARY) {
+                enemy.position.z = -ENEMY_BOUNDARY;
                 enemy.userData.direction.z *= -1;
-            } else if (enemy.position.z > 9) {
-                enemy.position.z = 9;
+            } else if (enemy.position.z > ENEMY_BOUNDARY) {
+                enemy.position.z = ENEMY_BOUNDARY;
                 enemy.userData.direction.z *= -1;
             }
         }
