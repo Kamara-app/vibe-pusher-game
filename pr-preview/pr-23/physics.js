@@ -55,29 +55,31 @@ function applyEnemyPhysics(enemy, platform) {
         enemy.userData.isFalling = false;
     }
     
-    // Apply push force over time if enemy is being pushed
-    if (enemy.userData.isPushed) {
-        const currentTime = Date.now();
-        const elapsedTime = currentTime - enemy.userData.pushStartTime;
-        
-        // Apply push force for the duration
-        if (elapsedTime < PUSH_DURATION) {
-            // Calculate remaining push force based on time elapsed (linear decay)
-            const remainingForceFactor = 1 - (elapsedTime / PUSH_DURATION);
+        // Apply push force over time if enemy is being pushed
+        if (enemy.userData.isPushed) {
+            const currentTime = Date.now();
+            const elapsedTime = currentTime - enemy.userData.pushStartTime;
             
-            // Apply the push force gradually
-            const pushForceThisFrame = enemy.userData.pushVelocity.clone().multiplyScalar(remainingForceFactor * 0.1);
-            enemy.position.x += pushForceThisFrame.x;
-            enemy.position.z += pushForceThisFrame.z;
-            
-            // Keep enemy on platform
-            if (enemy.position.x < -ENEMY_BOUNDARY) enemy.position.x = -ENEMY_BOUNDARY;
-            if (enemy.position.x > ENEMY_BOUNDARY) enemy.position.x = ENEMY_BOUNDARY;
-            if (enemy.position.z < -ENEMY_BOUNDARY) enemy.position.z = -ENEMY_BOUNDARY;
-            if (enemy.position.z > ENEMY_BOUNDARY) enemy.position.z = ENEMY_BOUNDARY;
-        } else {
-            // Push effect has ended
-            enemy.userData.isPushed = false;
+            // Apply push force for the duration
+            if (elapsedTime < PUSH_DURATION) {
+                // Calculate remaining push force based on time elapsed (quadratic easing out)
+                const progress = elapsedTime / PUSH_DURATION;
+                const remainingForceFactor = 1 - (progress * progress);
+                
+                // Apply the push force gradually
+                const pushForceThisFrame = enemy.userData.pushVelocity.clone().multiplyScalar(remainingForceFactor * 0.1);
+                enemy.position.x += pushForceThisFrame.x;
+                enemy.position.z += pushForceThisFrame.z;
+                
+                // Keep enemy on platform
+                if (enemy.position.x < -ENEMY_BOUNDARY) enemy.position.x = -ENEMY_BOUNDARY;
+                if (enemy.position.x > ENEMY_BOUNDARY) enemy.position.x = ENEMY_BOUNDARY;
+                if (enemy.position.z < -ENEMY_BOUNDARY) enemy.position.z = -ENEMY_BOUNDARY;
+                if (enemy.position.z > ENEMY_BOUNDARY) enemy.position.z = ENEMY_BOUNDARY;
+            } else {
+                // Push effect has ended
+                enemy.userData.isPushed = false;
+            }
         }
     }
     
