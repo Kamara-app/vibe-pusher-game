@@ -133,9 +133,5 @@ function updateCharacterPosition(character, speed, velocity, platform) {
         facingDirection.set(1, 0, 0);
     }
     
-    // Keep player on platform
-    if (character.position.x < -PLAYER_BOUNDARY) character.position.x = -PLAYER_BOUNDARY;
-    if (character.position.x > PLAYER_BOUNDARY) character.position.x = PLAYER_BOUNDARY;
-    if (character.position.z < -PLAYER_BOUNDARY) character.position.z = -PLAYER_BOUNDARY;
-    if (character.position.z > PLAYER_BOUNDARY) character.position.z = PLAYER_BOUNDARY;
+    // No platform boundary restrictions for player
 }
