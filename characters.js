@@ -102,20 +102,63 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
         const z = Math.random() * 16 - 8; // Range: -8 to 8
         enemy.position.set(x, platform.position.y + enemySize + 0.5, z);
         
-        // Add random movement direction
-        enemy.direction = new THREE.Vector3(
-            Math.random() * 2 - 1,
-            0,
-            Math.random() * 2 - 1
-        ).normalize();
-        
-        // Add change direction timer
-        enemy.nextDirectionChange = Math.random() * 2000 + 1000; // 1-3 seconds
-        enemy.lastDirectionChange = Date.now();
+        // Store enemy properties in userData for better organization
+        enemy.userData = {
+            size: enemySize,
+            direction: new THREE.Vector3(
+                Math.random() * 2 - 1,
+                0,
+                Math.random() * 2 - 1
+            ).normalize(),
+            nextDirectionChange: Math.random() * 2000 + 1000, // 1-3 seconds
+            lastDirectionChange: Date.now()
+        };
         
         scene.add(enemy);
         enemies.push(enemy);
     }
     
     return enemies;
+}
+
+// Update enemy positions
+function updateEnemies(enemies, enemySpeed) {
+    const now = Date.now();
+    
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        
+        // Check if it's time to change direction
+        if (now - enemy.userData.lastDirectionChange > enemy.userData.nextDirectionChange) {
+            enemy.userData.direction = new THREE.Vector3(
+                Math.random() * 2 - 1,
+                0,
+                Math.random() * 2 - 1
+            ).normalize();
+            
+            enemy.userData.nextDirectionChange = Math.random() * 2000 + 1000;
+            enemy.userData.lastDirectionChange = now;
+        }
+        
+        // Move enemy
+        enemy.position.x += enemy.userData.direction.x * enemySpeed;
+        enemy.position.z += enemy.userData.direction.z * enemySpeed;
+        
+        // Keep enemy on platform
+        if (enemy.position.x < -9) {
+            enemy.position.x = -9;
+            enemy.userData.direction.x *= -1;
+        } else if (enemy.position.x > 9) {
+            enemy.position.x = 9;
+            enemy.userData.direction.x *= -1;
+        }
+        
+        if (enemy.position.z < -9) {
+            enemy.position.z = -9;
+            enemy.userData.direction.z *= -1;
+        } else if (enemy.position.z > 9) {
+            enemy.position.z = 9;
+            enemy.userData.direction.z *= -1;
+        }
+    }
 }
