@@ -59,7 +59,7 @@ function onKeyDown(event) {
                 // Reset push state after a short delay (matching the push animation to the effect duration)
                 setTimeout(() => {
                     isPushing = false;
-                }, 300);
+                }, 500);
                 
                 // Reset cooldown after the specified time
                 setTimeout(() => {
