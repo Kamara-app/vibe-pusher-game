@@ -9,15 +9,22 @@ let jumpStrength = 4; // Reduced from 6 to 4
 let speed = 0.2;
 let gameActive = true;
 
+// Enemy variables
+let enemies = [];
+const enemyCount = 5;
+const enemySpeed = 0.1;
+const enemySize = 0.4;
+const enemyColor = 0xFF0000;
+
 // Initialize the game
 function init() {
     // Create scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Sky blue background
     
-    // Create camera
+    // Create camera - adjusted to be more from above
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 5, 10);
+    camera.position.set(0, 12, 8); // Changed from (0, 5, 10) to be higher and closer
     camera.lookAt(0, 0, 0);
     
     // Create renderer
@@ -38,6 +45,9 @@ function init() {
     
     // Create character
     createCharacter();
+    
+    // Create enemies
+    createEnemies();
     
     // Add event listeners for controls
     document.addEventListener('keydown', onKeyDown, false);
@@ -72,6 +82,107 @@ function createCharacter() {
     character = new THREE.Mesh(characterGeometry, characterMaterial);
     character.position.set(0, 3, 0); // Updated to be on top of the elevated platform (2 + 0.5 + 0.5)
     scene.add(character);
+}
+
+// Create enemies
+function createEnemies() {
+    // Clear existing enemies
+    for (let i = 0; i < enemies.length; i++) {
+        scene.remove(enemies[i]);
+    }
+    enemies = [];
+    
+    // Create new enemies
+    for (let i = 0; i < enemyCount; i++) {
+        const enemyGeometry = new THREE.SphereGeometry(enemySize, 32, 32);
+        const enemyMaterial = new THREE.MeshStandardMaterial({ color: enemyColor });
+        const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+        
+        // Random position on the platform
+        const x = Math.random() * 16 - 8; // Range: -8 to 8
+        const z = Math.random() * 16 - 8; // Range: -8 to 8
+        enemy.position.set(x, platform.position.y + enemySize + 0.5, z);
+        
+        // Add random movement direction
+        enemy.direction = new THREE.Vector3(
+            Math.random() * 2 - 1,
+            0,
+            Math.random() * 2 - 1
+        ).normalize();
+        
+        // Add change direction timer
+        enemy.nextDirectionChange = Math.random() * 2000 + 1000; // 1-3 seconds
+        enemy.lastDirectionChange = Date.now();
+        
+        scene.add(enemy);
+        enemies.push(enemy);
+    }
+}
+
+// Update enemy positions
+function updateEnemies() {
+    const now = Date.now();
+    
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        
+        // Check if it's time to change direction
+        if (now - enemy.lastDirectionChange > enemy.nextDirectionChange) {
+            enemy.direction = new THREE.Vector3(
+                Math.random() * 2 - 1,
+                0,
+                Math.random() * 2 - 1
+            ).normalize();
+            
+            enemy.nextDirectionChange = Math.random() * 2000 + 1000;
+            enemy.lastDirectionChange = now;
+        }
+        
+        // Move enemy
+        enemy.position.x += enemy.direction.x * enemySpeed;
+        enemy.position.z += enemy.direction.z * enemySpeed;
+        
+        // Keep enemy on platform
+        if (enemy.position.x < -9) {
+            enemy.position.x = -9;
+            enemy.direction.x *= -1;
+        } else if (enemy.position.x > 9) {
+            enemy.position.x = 9;
+            enemy.direction.x *= -1;
+        }
+        
+        if (enemy.position.z < -9) {
+            enemy.position.z = -9;
+            enemy.direction.z *= -1;
+        } else if (enemy.position.z > 9) {
+            enemy.position.z = 9;
+            enemy.direction.z *= -1;
+        }
+    }
+}
+
+// Check for collisions between player and enemies
+function checkCollisions() {
+    const playerRadius = 0.5;
+    
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        const distance = character.position.distanceTo(enemy.position);
+        
+        // If collision detected
+        if (distance < playerRadius + enemySize) {
+            // Push player away from enemy
+            const pushDirection = new THREE.Vector3()
+                .subVectors(character.position, enemy.position)
+                .normalize();
+            
+            character.position.x += pushDirection.x * 0.2;
+            character.position.z += pushDirection.z * 0.2;
+            
+            // Optional: make the player bounce a bit
+            velocity.y = 1;
+        }
+    }
 }
 
 // Handle key down events
@@ -177,14 +288,14 @@ function updateCharacter() {
     }
     
     // Check if character fell too far
-    // Check if character fell too far
     if (character.position.y < platform.position.y - 12) {
         gameOver();
     }
     
-    // Update camera to follow character
+    // Update camera to follow character - adjusted to be more from above
     camera.position.x = character.position.x;
-    camera.position.z = character.position.z + 10;
+    camera.position.y = character.position.y + 10; // Higher above the character
+    camera.position.z = character.position.z + 6; // Closer to the character
     camera.lookAt(character.position);
 }
 
@@ -215,6 +326,9 @@ function resetGame() {
     canJump = true;
     gameActive = true;
     document.getElementById('gameOver').style.display = 'none';
+    
+    // Recreate enemies
+    createEnemies();
 }
 
 // Animation loop
@@ -223,6 +337,8 @@ function animate() {
     
     if (gameActive) {
         updateCharacter();
+        updateEnemies();
+        checkCollisions();
     }
     
     renderer.render(scene, camera);
