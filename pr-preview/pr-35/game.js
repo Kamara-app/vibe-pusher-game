@@ -134,7 +134,7 @@ function updateCharacter() {
     // Update push arm position
     updatePushArm(pushArm, character, facingDirection, isPushing);
     
-    // Update cooldown indicator
+    // Update cooldown indicator - make sure to pass camera for proper orientation
     updateCooldownIndicator(cooldownIndicator, character, pushCooldown, lastPushTime, PUSH_COOLDOWN_TIME);
     
     // Update camera to follow character - adjusted to be more from above
