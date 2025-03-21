@@ -43,13 +43,14 @@ function applyPhysics(character, velocity, platform) {
 
 // Apply physics to enemy
 function applyEnemyPhysics(enemy, platform) {
+    // If enemy doesn't have velocity yet, initialize it
+    if (!enemy.userData.velocity) {
+        enemy.userData.velocity = { y: 0 };
+    }
+    
     // If enemy is not on platform or is already falling, apply gravity
-    if (!isOnPlatform(enemy, platform) || (enemy.userData.velocity && enemy.userData.velocity.y < 0)) {
-        // If enemy doesn't have velocity yet, initialize it
-        if (!enemy.userData.velocity) {
-            enemy.userData.velocity = { y: 0 };
-        }
-        
+    // This matches the player physics logic
+    if (!isOnPlatform(enemy, platform) || enemy.userData.velocity.y < 0) {
         // Apply gravity
         enemy.userData.velocity.y -= GRAVITY;
         enemy.position.y += enemy.userData.velocity.y * 0.1;
@@ -59,9 +60,7 @@ function applyEnemyPhysics(enemy, platform) {
     } else if (enemy.position.y <= platform.position.y + PLATFORM_HEIGHT) {
         // Enemy is on platform and at or below the correct height
         enemy.position.y = platform.position.y + PLATFORM_HEIGHT;
-        if (enemy.userData.velocity) {
-            enemy.userData.velocity.y = 0;
-        }
+        enemy.userData.velocity.y = 0;
         enemy.userData.isFalling = false;
     }
     
