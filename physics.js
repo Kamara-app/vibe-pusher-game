@@ -48,20 +48,29 @@ function applyEnemyPhysics(enemy, platform) {
         enemy.userData.velocity = { y: 0 };
     }
     
+    // Check if enemy is on the platform
+    const onPlatform = isOnPlatform(enemy, platform);
+    
     // If enemy is not on platform or is already falling, apply gravity
-    // This matches the player physics logic
-    if (!isOnPlatform(enemy, platform) || enemy.userData.velocity.y < 0) {
+    if (!onPlatform || enemy.userData.velocity.y < 0) {
         // Apply gravity
         enemy.userData.velocity.y -= GRAVITY;
         enemy.position.y += enemy.userData.velocity.y * 0.1;
         
         // Mark enemy as falling
         enemy.userData.isFalling = true;
-    } else if (enemy.position.y <= platform.position.y + PLATFORM_HEIGHT) {
-        // Enemy is on platform and at or below the correct height
+    }
+    
+    // Check if enemy is on the ground
+    // Only set position when falling onto platform from above (velocity.y < 0)
+    if (enemy.position.y <= platform.position.y + PLATFORM_HEIGHT && 
+        (enemy.userData.velocity.y <= 0 || enemy.userData.isOnPlatform) && 
+        onPlatform) {
+        
         enemy.position.y = platform.position.y + PLATFORM_HEIGHT;
         enemy.userData.velocity.y = 0;
         enemy.userData.isFalling = false;
+        enemy.userData.isOnPlatform = true;
     }
     
     // Apply push force over time if enemy is being pushed

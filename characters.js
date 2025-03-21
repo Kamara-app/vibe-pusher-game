@@ -102,7 +102,9 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
         // Random position on the platform
         const x = Math.random() * 16 - 8; // Range: -8 to 8
         const z = Math.random() * 16 - 8; // Range: -8 to 8
-        enemy.position.set(x, platform.position.y + enemySize + 0.5, z);
+        
+        // Position enemy exactly at platform height + enemy size to ensure it's on the platform
+        enemy.position.set(x, platform.position.y + PLATFORM_HEIGHT, z);
         
         // Store enemy properties in userData for better organization
         enemy.userData = {
@@ -116,7 +118,8 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
             lastDirectionChange: Date.now(),
             isFalling: false,
             velocity: { y: 0 },
-            pushVelocity: new THREE.Vector3(0, 0, 0) // Initialize push velocity
+            pushVelocity: new THREE.Vector3(0, 0, 0), // Initialize push velocity
+            isOnPlatform: true // Initialize as being on the platform
         };
         
         scene.add(enemy);
