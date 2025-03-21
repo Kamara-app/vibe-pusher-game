@@ -54,7 +54,7 @@ function init() {
     createPlatform();
     
     // Create character
-    createCharacter();
+    initializeCharacter();
     
     // Create enemies
     createEnemies();
@@ -86,7 +86,7 @@ function createPlatform() {
 }
 
 // Create the player character and related elements
-function createCharacter() {
+function initializeCharacter() {
     // Create the main character, direction indicator, and push arm
     character = createCharacter(scene);
     smileyFace = createDirectionIndicator(scene);
