@@ -57,7 +57,7 @@ function init() {
     initializeCharacter();
     
     // Create enemies
-    createEnemies();
+    initializeEnemies();
     
     // Add event listeners for controls
     document.addEventListener('keydown', onKeyDown, false);
@@ -99,7 +99,7 @@ function initializeCharacter() {
 }
 
 // Create enemies
-function createEnemies() {
+function initializeEnemies() {
     // Clear existing enemies
     for (let i = 0; i < enemies.length; i++) {
         scene.remove(enemies[i]);
@@ -390,7 +390,7 @@ function resetGame() {
     document.getElementById('gameOver').style.display = 'none';
     
     // Recreate enemies
-    createEnemies();
+    initializeEnemies();
 }
 
 // Animation loop
