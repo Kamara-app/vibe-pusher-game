@@ -85,89 +85,15 @@ function createPlatform() {
     // Removed all border objects (northBorder, southBorder, eastBorder, westBorder)
 }
 
-// Create the player character
+// Create the player character and related elements
 function createCharacter() {
-    const characterGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const characterMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
-    character = new THREE.Mesh(characterGeometry, characterMaterial);
-    character.position.set(0, 3, 0); // Updated to be on top of the elevated platform (2 + 0.5 + 0.5)
-    scene.add(character);
-    
-    // Create smiley face indicator for direction
-    const smileyGeometry = new THREE.CircleGeometry(0.2, 32);
-    const smileyMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
-    smileyFace = new THREE.Mesh(smileyGeometry, smileyMaterial);
-    
-    // Add eyes and mouth to the smiley
-    const leftEyeGeometry = new THREE.CircleGeometry(0.05, 16);
-    const rightEyeGeometry = new THREE.CircleGeometry(0.05, 16);
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    
-    const leftEye = new THREE.Mesh(leftEyeGeometry, eyeMaterial);
-    leftEye.position.set(-0.07, 0.05, 0.01);
-    smileyFace.add(leftEye);
-    
-    const rightEye = new THREE.Mesh(rightEyeGeometry, eyeMaterial);
-    rightEye.position.set(0.07, 0.05, 0.01);
-    smileyFace.add(rightEye);
-    
-    // Create a smile using a curved line
-    const smileGeometry = new THREE.BufferGeometry();
-    const smileCurve = new THREE.EllipseCurve(
-        0, -0.03, // center
-        0.1, 0.05, // x radius, y radius
-        Math.PI, 0, // start angle, end angle
-        true // clockwise
-    );
-    const smilePoints = smileCurve.getPoints(20);
-    smileGeometry.setFromPoints(smilePoints);
-    const smileMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-    const smile = new THREE.Line(smileGeometry, smileMaterial);
-    smile.position.z = 0.01;
-    smileyFace.add(smile);
+    // Create the main character, direction indicator, and push arm
+    character = createCharacter(scene);
+    smileyFace = createDirectionIndicator(scene);
+    pushArm = createPushArm(scene);
     
     // Position the smiley face in front of the character
-    updateSmileyPosition();
-    scene.add(smileyFace);
-    
-    // Create push arm
-    const armGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.8);
-    const armMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
-    pushArm = new THREE.Mesh(armGeometry, armMaterial);
-    pushArm.visible = false; // Hide initially
-    scene.add(pushArm);
-}
-
-// Update smiley face position based on character position and facing direction
-function updateSmileyPosition() {
-    // Position smiley face 0.8 units in front of the character in the facing direction
-    smileyFace.position.copy(character.position);
-    smileyFace.position.add(facingDirection.clone().multiplyScalar(0.8));
-    
-    // Make smiley face look in the same direction as the character
-    smileyFace.lookAt(smileyFace.position.clone().add(facingDirection));
-}
-
-// Update push arm position and rotation
-function updatePushArm() {
-    if (isPushing) {
-        pushArm.visible = true;
-        pushArm.position.copy(character.position);
-        
-        // Position the arm in front of the character
-        pushArm.position.add(facingDirection.clone().multiplyScalar(0.4));
-        
-        // Rotate the arm to align with the facing direction
-        if (Math.abs(facingDirection.x) > Math.abs(facingDirection.z)) {
-            // Facing left or right
-            pushArm.rotation.y = facingDirection.x > 0 ? Math.PI / 2 : -Math.PI / 2;
-        } else {
-            // Facing forward or backward
-            pushArm.rotation.y = facingDirection.z > 0 ? Math.PI : 0;
-        }
-    } else {
-        pushArm.visible = false;
-    }
+    updateSmileyPosition(smileyFace, character, facingDirection);
 }
 
 // Create enemies
@@ -178,31 +104,8 @@ function createEnemies() {
     }
     enemies = [];
     
-    // Create new enemies
-    for (let i = 0; i < enemyCount; i++) {
-        const enemyGeometry = new THREE.SphereGeometry(enemySize, 32, 32);
-        const enemyMaterial = new THREE.MeshStandardMaterial({ color: enemyColor });
-        const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
-        
-        // Random position on the platform
-        const x = Math.random() * 16 - 8; // Range: -8 to 8
-        const z = Math.random() * 16 - 8; // Range: -8 to 8
-        enemy.position.set(x, platform.position.y + enemySize + 0.5, z);
-        
-        // Add random movement direction
-        enemy.direction = new THREE.Vector3(
-            Math.random() * 2 - 1,
-            0,
-            Math.random() * 2 - 1
-        ).normalize();
-        
-        // Add change direction timer
-        enemy.nextDirectionChange = Math.random() * 2000 + 1000; // 1-3 seconds
-        enemy.lastDirectionChange = Date.now();
-        
-        scene.add(enemy);
-        enemies.push(enemy);
-    }
+    // Create new enemies using the function from characters.js
+    enemies = createEnemies(scene, platform, enemyCount, enemySize, enemyColor);
 }
 
 // Update enemy positions
@@ -430,10 +333,10 @@ function updateCharacter() {
     }
     
     // Update smiley face position
-    updateSmileyPosition();
+    updateSmileyPosition(smileyFace, character, facingDirection);
     
     // Update push arm position
-    updatePushArm();
+    updatePushArm(pushArm, character, facingDirection, isPushing);
     
     // Check if character fell off the platform
     if (!isOnPlatform() && character.position.y < 3) {
