@@ -56,9 +56,9 @@ function applyEnemyPhysics(enemy, platform) {
         
         // Mark enemy as falling
         enemy.userData.isFalling = true;
-    } else if (enemy.position.y <= platform.position.y + enemy.userData.size + 0.5) {
+    } else if (enemy.position.y <= platform.position.y + PLATFORM_HEIGHT) {
         // Enemy is on platform and at or below the correct height
-        enemy.position.y = platform.position.y + enemy.userData.size + 0.5;
+        enemy.position.y = platform.position.y + PLATFORM_HEIGHT;
         if (enemy.userData.velocity) {
             enemy.userData.velocity.y = 0;
         }
