@@ -2,8 +2,8 @@
 
 // Physics constants
 const GRAVITY = 0.2;
-const PUSH_DISTANCE = 5; // How far the push affects
-const PUSH_FORCE = 2; // How strong the push is
+const PUSH_DISTANCE = 3; // How far the push affects
+const PUSH_FORCE = 4; // How strong the push is
 
 // Platform boundary constants
 const PLATFORM_HALF_WIDTH = 10; // Half width of the platform
@@ -118,9 +118,13 @@ function pushAttack(character, enemies, facingDirection) {
             distanceInFacingDirection < PUSH_DISTANCE && 
             perpendicularDistance < PUSH_DISTANCE / 2) {
             
-            // Push the enemy away
-            const pushVector = facingDirection.clone().multiplyScalar(PUSH_FORCE);
-            enemy.position.add(pushVector);
+            // Apply push velocity to the enemy instead of instantly moving them
+            if (!enemy.userData.pushVelocity) {
+                enemy.userData.pushVelocity = new THREE.Vector3();
+            }
+            
+            // Set the push velocity in the direction of the push
+            enemy.userData.pushVelocity.copy(facingDirection).multiplyScalar(PUSH_FORCE);
             
             // Also change the enemy's direction
             enemy.userData.direction.copy(facingDirection);

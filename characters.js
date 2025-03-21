@@ -113,7 +113,8 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
             nextDirectionChange: Math.random() * 2000 + 1000, // 1-3 seconds
             lastDirectionChange: Date.now(),
             isFalling: false,
-            velocity: { y: 0 }
+            velocity: { y: 0 },
+            pushVelocity: new THREE.Vector3(0, 0, 0) // Initialize push velocity
         };
         
         scene.add(enemy);
@@ -127,6 +128,7 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
 function updateEnemies(enemies, enemySpeed, platform) {
     const now = Date.now();
     const enemiesToRemove = [];
+    const PUSH_DECELERATION = 0.15; // How quickly push velocity decreases
     
     for (let i = 0; i < enemies.length; i++) {
         const enemy = enemies[i];
@@ -155,26 +157,54 @@ function updateEnemies(enemies, enemySpeed, platform) {
             enemy.userData.lastDirectionChange = now;
         }
         
-        // Move enemy
-        enemy.position.x += enemy.userData.direction.x * enemySpeed;
-        enemy.position.z += enemy.userData.direction.z * enemySpeed;
+        // Handle push velocity first
+        let movementFromPush = false;
+        if (enemy.userData.pushVelocity && 
+            (Math.abs(enemy.userData.pushVelocity.x) > 0.01 || 
+             Math.abs(enemy.userData.pushVelocity.z) > 0.01)) {
+            
+            // Apply push velocity
+            enemy.position.x += enemy.userData.pushVelocity.x;
+            enemy.position.z += enemy.userData.pushVelocity.z;
+            
+            // Gradually reduce push velocity (deceleration)
+            enemy.userData.pushVelocity.x *= (1 - PUSH_DECELERATION);
+            enemy.userData.pushVelocity.z *= (1 - PUSH_DECELERATION);
+            
+            // If push velocity is very small, reset it to zero
+            if (Math.abs(enemy.userData.pushVelocity.x) < 0.01) enemy.userData.pushVelocity.x = 0;
+            if (Math.abs(enemy.userData.pushVelocity.z) < 0.01) enemy.userData.pushVelocity.z = 0;
+            
+            movementFromPush = true;
+        }
+        
+        // Only apply normal movement if not being pushed
+        if (!movementFromPush) {
+            // Move enemy with normal movement
+            enemy.position.x += enemy.userData.direction.x * enemySpeed;
+            enemy.position.z += enemy.userData.direction.z * enemySpeed;
+        }
         
         // Keep enemy on platform - only if they're still on the platform
         if (isOnPlatform(enemy, platform)) {
             if (enemy.position.x < -ENEMY_BOUNDARY) {
                 enemy.position.x = -ENEMY_BOUNDARY;
                 enemy.userData.direction.x *= -1;
+                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.x *= -0.5; // Bounce with reduced energy
             } else if (enemy.position.x > ENEMY_BOUNDARY) {
                 enemy.position.x = ENEMY_BOUNDARY;
                 enemy.userData.direction.x *= -1;
+                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.x *= -0.5; // Bounce with reduced energy
             }
             
             if (enemy.position.z < -ENEMY_BOUNDARY) {
                 enemy.position.z = -ENEMY_BOUNDARY;
                 enemy.userData.direction.z *= -1;
+                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.z *= -0.5; // Bounce with reduced energy
             } else if (enemy.position.z > ENEMY_BOUNDARY) {
                 enemy.position.z = ENEMY_BOUNDARY;
                 enemy.userData.direction.z *= -1;
+                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.z *= -0.5; // Bounce with reduced energy
             }
         }
     }
