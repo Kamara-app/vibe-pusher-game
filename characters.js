@@ -121,23 +121,35 @@ function updatePushArm(pushArm, character, facingDirection, isPushing) {
         pushArm.visible = true;
         pushArm.position.copy(character.position);
         
-        // Position the semi-sphere in front of the character
-        pushArm.position.add(facingDirection.clone().multiplyScalar(0.5));
+        // Position the semi-sphere in front of the character (slightly further out to ensure visibility)
+        pushArm.position.add(facingDirection.clone().multiplyScalar(0.6));
+        
+        // Reset all rotations first to avoid compounding rotation issues
+        pushArm.rotation.set(0, 0, 0);
         
         // Rotate the semi-sphere to align with the facing direction
         pushArm.rotation.y = Math.atan2(facingDirection.x, facingDirection.z);
         
+        // Calculate the angle for proper orientation
+        const angle = Math.atan2(Math.sqrt(facingDirection.x * facingDirection.x + facingDirection.z * facingDirection.z), facingDirection.y);
+        
         // Rotate the semi-sphere so the flat part faces outward
-        if (facingDirection.z < 0) {
-            pushArm.rotation.x = -Math.PI / 2;
-        } else if (facingDirection.z > 0) {
-            pushArm.rotation.x = Math.PI / 2;
-        } else if (facingDirection.x < 0) {
-            pushArm.rotation.x = 0;
-            pushArm.rotation.z = -Math.PI / 2;
-        } else if (facingDirection.x > 0) {
-            pushArm.rotation.x = 0;
-            pushArm.rotation.z = Math.PI / 2;
+        if (Math.abs(facingDirection.z) > Math.abs(facingDirection.x)) {
+            // Primarily facing along Z axis
+            if (facingDirection.z < 0) {
+                pushArm.rotation.x = -Math.PI / 2;
+            } else {
+                pushArm.rotation.x = Math.PI / 2;
+            }
+        } else {
+            // Primarily facing along X axis
+            if (facingDirection.x < 0) {
+                pushArm.rotation.x = 0;
+                pushArm.rotation.z = -Math.PI / 2;
+            } else {
+                pushArm.rotation.x = 0;
+                pushArm.rotation.z = Math.PI / 2;
+            }
         }
     } else {
         pushArm.visible = false;
@@ -150,9 +162,9 @@ function updateCooldownIndicator(cooldownIndicator, character, isPushCooldown, l
         // Show the indicator
         cooldownIndicator.group.visible = true;
         
-        // Position above the character
+        // Position above the character (increased height for better visibility)
         cooldownIndicator.group.position.copy(character.position);
-        cooldownIndicator.group.position.y += 1.0;
+        cooldownIndicator.group.position.y += 1.5;
         
         // Face the indicator toward the camera
         cooldownIndicator.group.rotation.x = Math.PI / 2;
