@@ -5,6 +5,11 @@ const GRAVITY = 0.2;
 const PUSH_DISTANCE = 5; // How far the push affects
 const PUSH_FORCE = 2; // How strong the push is
 
+// Platform boundary constants
+const PLATFORM_HALF_WIDTH = 10; // Half width of the platform
+const PLAYER_BOUNDARY = 9.5; // Player movement boundary
+const ENEMY_BOUNDARY = 9; // Enemy movement boundary
+
 // Apply physics to character
 function applyPhysics(character, velocity, platform) {
     // Apply gravity
@@ -25,13 +30,45 @@ function applyPhysics(character, velocity, platform) {
     return true; // Game continues
 }
 
+// Apply physics to enemy
+function applyEnemyPhysics(enemy, platform) {
+    // If enemy is not on platform, apply gravity
+    if (!isOnPlatform(enemy, platform)) {
+        // If enemy doesn't have velocity yet, initialize it
+        if (!enemy.userData.velocity) {
+            enemy.userData.velocity = { y: 0 };
+        }
+        
+        // Apply gravity
+        enemy.userData.velocity.y -= GRAVITY;
+        enemy.position.y += enemy.userData.velocity.y * 0.1;
+        
+        // Mark enemy as falling
+        enemy.userData.isFalling = true;
+    } else if (enemy.position.y <= platform.position.y + enemy.userData.size + 0.5) {
+        // Enemy is on platform and at or below the correct height
+        enemy.position.y = platform.position.y + enemy.userData.size + 0.5;
+        if (enemy.userData.velocity) {
+            enemy.userData.velocity.y = 0;
+        }
+        enemy.userData.isFalling = false;
+    }
+    
+    // Check if enemy fell too far (remove from game)
+    if (enemy.position.y < platform.position.y - 12) {
+        return false; // Enemy should be removed
+    }
+    
+    return true; // Enemy stays in game
+}
+
 // Check if character is above the platform
 function isOnPlatform(character, platform) {
     return (
-        character.position.x >= -10 && 
-        character.position.x <= 10 && 
-        character.position.z >= -10 && 
-        character.position.z <= 10
+        character.position.x >= -PLATFORM_HALF_WIDTH && 
+        character.position.x <= PLATFORM_HALF_WIDTH && 
+        character.position.z >= -PLATFORM_HALF_WIDTH && 
+        character.position.z <= PLATFORM_HALF_WIDTH
     );
 }
 
@@ -89,4 +126,9 @@ function pushAttack(character, enemies, facingDirection) {
             enemy.userData.direction.copy(facingDirection);
         }
     }
+}
+
+// Check if player is falling
+function isPlayerFalling(character, velocity, platform) {
+    return character.position.y > platform.position.y + 1.1 && velocity.y < 0;
 }
