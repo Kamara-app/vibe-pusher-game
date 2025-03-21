@@ -9,6 +9,16 @@ let jumpStrength = 4; // Reduced from 6 to 4
 let speed = 0.2;
 let gameActive = true;
 
+// Direction tracking
+let facingDirection = new THREE.Vector3(0, 0, -1); // Default facing forward (negative z)
+let smileyFace, pushArm;
+let isPushing = false;
+let pushCooldown = false;
+let lastPushTime = 0;
+const PUSH_COOLDOWN_TIME = 500; // 500ms cooldown
+const PUSH_DISTANCE = 2; // How far the push affects
+const PUSH_FORCE = 2; // How strong the push is
+
 // Enemy variables
 let enemies = [];
 const enemyCount = 5;
@@ -82,6 +92,82 @@ function createCharacter() {
     character = new THREE.Mesh(characterGeometry, characterMaterial);
     character.position.set(0, 3, 0); // Updated to be on top of the elevated platform (2 + 0.5 + 0.5)
     scene.add(character);
+    
+    // Create smiley face indicator for direction
+    const smileyGeometry = new THREE.CircleGeometry(0.2, 32);
+    const smileyMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
+    smileyFace = new THREE.Mesh(smileyGeometry, smileyMaterial);
+    
+    // Add eyes and mouth to the smiley
+    const leftEyeGeometry = new THREE.CircleGeometry(0.05, 16);
+    const rightEyeGeometry = new THREE.CircleGeometry(0.05, 16);
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    
+    const leftEye = new THREE.Mesh(leftEyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.07, 0.05, 0.01);
+    smileyFace.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(rightEyeGeometry, eyeMaterial);
+    rightEye.position.set(0.07, 0.05, 0.01);
+    smileyFace.add(rightEye);
+    
+    // Create a smile using a curved line
+    const smileGeometry = new THREE.BufferGeometry();
+    const smileCurve = new THREE.EllipseCurve(
+        0, -0.03, // center
+        0.1, 0.05, // x radius, y radius
+        Math.PI, 0, // start angle, end angle
+        true // clockwise
+    );
+    const smilePoints = smileCurve.getPoints(20);
+    smileGeometry.setFromPoints(smilePoints);
+    const smileMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
+    const smile = new THREE.Line(smileGeometry, smileMaterial);
+    smile.position.z = 0.01;
+    smileyFace.add(smile);
+    
+    // Position the smiley face in front of the character
+    updateSmileyPosition();
+    scene.add(smileyFace);
+    
+    // Create push arm
+    const armGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.8);
+    const armMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
+    pushArm = new THREE.Mesh(armGeometry, armMaterial);
+    pushArm.visible = false; // Hide initially
+    scene.add(pushArm);
+}
+
+// Update smiley face position based on character position and facing direction
+function updateSmileyPosition() {
+    // Position smiley face 0.8 units in front of the character in the facing direction
+    smileyFace.position.copy(character.position);
+    smileyFace.position.add(facingDirection.clone().multiplyScalar(0.8));
+    
+    // Make smiley face look in the same direction as the character
+    smileyFace.lookAt(smileyFace.position.clone().add(facingDirection));
+}
+
+// Update push arm position and rotation
+function updatePushArm() {
+    if (isPushing) {
+        pushArm.visible = true;
+        pushArm.position.copy(character.position);
+        
+        // Position the arm in front of the character
+        pushArm.position.add(facingDirection.clone().multiplyScalar(0.4));
+        
+        // Rotate the arm to align with the facing direction
+        if (Math.abs(facingDirection.x) > Math.abs(facingDirection.z)) {
+            // Facing left or right
+            pushArm.rotation.y = facingDirection.x > 0 ? Math.PI / 2 : -Math.PI / 2;
+        } else {
+            // Facing forward or backward
+            pushArm.rotation.y = facingDirection.z > 0 ? Math.PI : 0;
+        }
+    } else {
+        pushArm.visible = false;
+    }
 }
 
 // Create enemies
@@ -185,6 +271,54 @@ function checkCollisions() {
     }
 }
 
+// Perform push attack
+function pushAttack() {
+    if (pushCooldown) return;
+    
+    isPushing = true;
+    pushCooldown = true;
+    lastPushTime = Date.now();
+    
+    // Check for enemies in front of the player
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        
+        // Calculate vector from player to enemy
+        const toEnemy = new THREE.Vector3().subVectors(enemy.position, character.position);
+        
+        // Project this vector onto the facing direction to get distance in that direction
+        const distanceInFacingDirection = toEnemy.dot(facingDirection);
+        
+        // Calculate perpendicular distance (how far off the center line the enemy is)
+        const perpendicularVector = new THREE.Vector3().copy(toEnemy);
+        perpendicularVector.sub(facingDirection.clone().multiplyScalar(distanceInFacingDirection));
+        const perpendicularDistance = perpendicularVector.length();
+        
+        // If enemy is in front of player (within a cone) and within push distance
+        if (distanceInFacingDirection > 0 && 
+            distanceInFacingDirection < PUSH_DISTANCE && 
+            perpendicularDistance < PUSH_DISTANCE / 2) {
+            
+            // Push the enemy away
+            const pushVector = facingDirection.clone().multiplyScalar(PUSH_FORCE);
+            enemy.position.add(pushVector);
+            
+            // Also change the enemy's direction
+            enemy.direction.copy(facingDirection);
+        }
+    }
+    
+    // Reset push state after a short delay
+    setTimeout(() => {
+        isPushing = false;
+    }, 200);
+    
+    // Reset cooldown after the specified time
+    setTimeout(() => {
+        pushCooldown = false;
+    }, PUSH_COOLDOWN_TIME);
+}
+
 // Handle key down events
 function onKeyDown(event) {
     if (!gameActive) return;
@@ -193,24 +327,34 @@ function onKeyDown(event) {
         case 'ArrowUp':
         case 'KeyW':
             moveForward = true;
+            facingDirection.set(0, 0, -1);
             break;
             
         case 'ArrowLeft':
         case 'KeyA':
             moveLeft = true;
+            facingDirection.set(-1, 0, 0);
             break;
             
         case 'ArrowDown':
         case 'KeyS':
             moveBackward = true;
+            facingDirection.set(0, 0, 1);
             break;
             
         case 'ArrowRight':
         case 'KeyD':
             moveRight = true;
+            facingDirection.set(1, 0, 0);
             break;
             
         case 'Space':
+            // Space now performs push attack
+            pushAttack();
+            break;
+            
+        case 'KeyE':
+            // E key now performs jump
             if (canJump) {
                 velocity.y = jumpStrength;
                 canJump = false;
@@ -267,19 +411,29 @@ function updateCharacter() {
     // Move character based on controls
     if (moveForward) {
         character.position.z -= speed;
+        facingDirection.set(0, 0, -1);
     }
     
     if (moveBackward) {
         character.position.z += speed;
+        facingDirection.set(0, 0, 1);
     }
     
     if (moveLeft) {
         character.position.x -= speed;
+        facingDirection.set(-1, 0, 0);
     }
     
     if (moveRight) {
         character.position.x += speed;
+        facingDirection.set(1, 0, 0);
     }
+    
+    // Update smiley face position
+    updateSmileyPosition();
+    
+    // Update push arm position
+    updatePushArm();
     
     // Check if character fell off the platform
     if (!isOnPlatform() && character.position.y < 3) {
@@ -325,6 +479,9 @@ function resetGame() {
     moveRight = false;
     canJump = true;
     gameActive = true;
+    facingDirection.set(0, 0, -1); // Reset facing direction
+    isPushing = false;
+    pushCooldown = false;
     document.getElementById('gameOver').style.display = 'none';
     
     // Recreate enemies
