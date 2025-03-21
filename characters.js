@@ -124,6 +124,19 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
     return enemies;
 }
 
+// Helper function to handle boundary collisions
+function handleBoundaryCollision(enemy, minBound, maxBound, axis) {
+    if (enemy.position[axis] < minBound) {
+        enemy.position[axis] = minBound;
+        enemy.userData.direction[axis] *= -1;
+        if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
+    } else if (enemy.position[axis] > maxBound) {
+        enemy.position[axis] = maxBound;
+        enemy.userData.direction[axis] *= -1;
+        if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
+    }
+}
+
 // Update enemy positions
 function updateEnemies(enemies, enemySpeed, platform) {
     const now = Date.now();
@@ -187,25 +200,9 @@ function updateEnemies(enemies, enemySpeed, platform) {
         
         // Keep enemy on platform - only if they're still on the platform
         if (isOnPlatform(enemy, platform)) {
-            if (enemy.position.x < -ENEMY_BOUNDARY) {
-                enemy.position.x = -ENEMY_BOUNDARY;
-                enemy.userData.direction.x *= -1;
-                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.x *= -0.5; // Bounce with reduced energy
-            } else if (enemy.position.x > ENEMY_BOUNDARY) {
-                enemy.position.x = ENEMY_BOUNDARY;
-                enemy.userData.direction.x *= -1;
-                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.x *= -0.5; // Bounce with reduced energy
-            }
-            
-            if (enemy.position.z < -ENEMY_BOUNDARY) {
-                enemy.position.z = -ENEMY_BOUNDARY;
-                enemy.userData.direction.z *= -1;
-                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.z *= -0.5; // Bounce with reduced energy
-            } else if (enemy.position.z > ENEMY_BOUNDARY) {
-                enemy.position.z = ENEMY_BOUNDARY;
-                enemy.userData.direction.z *= -1;
-                if (enemy.userData.pushVelocity) enemy.userData.pushVelocity.z *= -0.5; // Bounce with reduced energy
-            }
+            // Handle boundary collisions
+            handleBoundaryCollision(enemy, -ENEMY_BOUNDARY, ENEMY_BOUNDARY, 'x');
+            handleBoundaryCollision(enemy, -ENEMY_BOUNDARY, ENEMY_BOUNDARY, 'z');
         }
     }
     
