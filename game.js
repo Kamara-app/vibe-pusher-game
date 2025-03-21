@@ -2,7 +2,7 @@
 let scene, camera, renderer;
 let platform, character;
 let velocity = new THREE.Vector3();
-let speed = 0.2;
+let speed = 0.15;
 let gameActive = true;
 
 // Direction tracking
