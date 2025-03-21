@@ -206,7 +206,7 @@ function gameOver() {
 
 // Reset game function
 function resetGame() {
-    character.position.set(0, 3, 0); // Updated to be on top of the elevated platform
+    character.position.set(0, platform.position.y + 1, 0); // Updated to be on top of the elevated platform
     velocity.set(0, 0, 0);
     moveForward = false;
     moveBackward = false;
