@@ -2,8 +2,8 @@
 
 // Physics constants
 const GRAVITY = 0.2;
-const PUSH_DISTANCE = 3; // How far the push affects
-const PUSH_FORCE = 4; // How strong the push is
+const PUSH_DISTANCE = 2; // How far the push affects
+const PUSH_FORCE = 3; // How strong the push is
 
 // Platform boundary constants
 const PLATFORM_HALF_WIDTH = 10; // Half width of the platform

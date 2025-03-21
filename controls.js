@@ -8,7 +8,7 @@ let moveRight = false;
 let isPushing = false;
 let pushCooldown = false;
 let lastPushTime = 0;
-const PUSH_COOLDOWN_TIME = 500; // 500ms cooldown
+const PUSH_COOLDOWN_TIME = 800; // 800ms cooldown
 
 // Initialize controls
 function initControls() {
