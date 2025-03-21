@@ -177,7 +177,8 @@ function updateCharacter() {
     }
     
     // Check if character fell too far
-    if (character.position.y < -10) {
+    // Check if character fell too far
+    if (character.position.y < platform.position.y - 12) {
         gameOver();
     }
     
