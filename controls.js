@@ -134,8 +134,8 @@ function updateCharacterPosition(character, speed, velocity, platform) {
     }
     
     // Keep player on platform
-    if (character.position.x < -9.5) character.position.x = -9.5;
-    if (character.position.x > 9.5) character.position.x = 9.5;
-    if (character.position.z < -9.5) character.position.z = -9.5;
-    if (character.position.z > 9.5) character.position.z = 9.5;
+    if (character.position.x < -PLAYER_BOUNDARY) character.position.x = -PLAYER_BOUNDARY;
+    if (character.position.x > PLAYER_BOUNDARY) character.position.x = PLAYER_BOUNDARY;
+    if (character.position.z < -PLAYER_BOUNDARY) character.position.z = -PLAYER_BOUNDARY;
+    if (character.position.z > PLAYER_BOUNDARY) character.position.z = PLAYER_BOUNDARY;
 }

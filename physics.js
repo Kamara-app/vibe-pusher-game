@@ -5,6 +5,11 @@ const GRAVITY = 0.2;
 const PUSH_DISTANCE = 5; // How far the push affects
 const PUSH_FORCE = 2; // How strong the push is
 
+// Platform boundary constants
+const PLATFORM_HALF_WIDTH = 10; // Half width of the platform
+const PLAYER_BOUNDARY = 9.5; // Player movement boundary
+const ENEMY_BOUNDARY = 9; // Enemy movement boundary
+
 // Apply physics to character
 function applyPhysics(character, velocity, platform) {
     // Apply gravity
@@ -60,10 +65,10 @@ function applyEnemyPhysics(enemy, platform) {
 // Check if character is above the platform
 function isOnPlatform(character, platform) {
     return (
-        character.position.x >= -10 && 
-        character.position.x <= 10 && 
-        character.position.z >= -10 && 
-        character.position.z <= 10
+        character.position.x >= -PLATFORM_HALF_WIDTH && 
+        character.position.x <= PLATFORM_HALF_WIDTH && 
+        character.position.z >= -PLATFORM_HALF_WIDTH && 
+        character.position.z <= PLATFORM_HALF_WIDTH
     );
 }
 
