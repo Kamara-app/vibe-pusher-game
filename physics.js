@@ -3,7 +3,7 @@
 // Physics constants
 const GRAVITY = 0.2;
 const PUSH_DISTANCE = 2; // How far the push affects
-const PUSH_FORCE = 3; // How strong the push is
+const PUSH_FORCE = 2; // How strong the push is (reduced from 3)
 const PUSH_DURATION = 500; // How long the push effect lasts (in ms)
 
 // Platform boundary constants
