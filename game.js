@@ -146,6 +146,12 @@ function animate() {
     
     if (gameActive) {
         updateCharacter();
+        
+        // Update gradual push for each enemy
+        for (let i = 0; i < enemies.length; i++) {
+            updateGradualPush(enemies[i]);
+        }
+        
         enemies = updateEnemies(enemies, enemySpeed, platform);
         checkCollisions(character, enemies, velocity);
     }
