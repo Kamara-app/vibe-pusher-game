@@ -127,36 +127,18 @@ function updatePushArm(pushArm, character, facingDirection, isPushing) {
         // Reset all rotations first to avoid compounding rotation issues
         pushArm.rotation.set(0, 0, 0);
         
-        // Use a simpler, more consistent approach for all directions
-        // First, point the semi-sphere in the right direction
-        const targetPosition = pushArm.position.clone().add(facingDirection);
+        // Properly orient the semi-sphere based on facing direction
+        // The semi-sphere's flat side should face outward from the character
         
-        // Create a temporary vector for calculations
-        const tempVector = new THREE.Vector3();
+        // First, align the push arm with the character's facing direction
+        const lookAtPos = pushArm.position.clone().add(facingDirection);
+        const tempMatrix = new THREE.Matrix4();
+        tempMatrix.lookAt(pushArm.position, lookAtPos, new THREE.Vector3(0, 1, 0));
+        pushArm.quaternion.setFromRotationMatrix(tempMatrix);
         
-        // Determine the primary axis of movement
-        if (Math.abs(facingDirection.x) > Math.abs(facingDirection.z)) {
-            // Moving primarily along X axis
-            if (facingDirection.x > 0) {
-                // Moving right
-                pushArm.rotation.y = -Math.PI / 2;
-            } else {
-                // Moving left
-                pushArm.rotation.y = Math.PI / 2;
-            }
-        } else {
-            // Moving primarily along Z axis
-            if (facingDirection.z > 0) {
-                // Moving backward
-                pushArm.rotation.y = Math.PI;
-            } else {
-                // Moving forward
-                pushArm.rotation.y = 0;
-            }
-        }
-        
-        // Rotate the semi-sphere so the flat part faces outward
-        pushArm.rotation.x = Math.PI / 2;
+        // Then rotate it 90 degrees so the flat side faces outward
+        // We need to rotate around the local X axis
+        pushArm.rotateX(-Math.PI / 2);
     } else {
         pushArm.visible = false;
     }
