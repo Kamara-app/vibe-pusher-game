@@ -18,6 +18,8 @@
             color: white;
             z-index: 100;
             display: block;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
         }
         #gameOver {
             position: absolute;
@@ -43,7 +45,8 @@
 </head>
 <body>
     <div id="info">
-        WASD or Arrow Keys to move, Space to jump
+        WASD or Arrow Keys to move, SPACE to push enemies, E to jump<br>
+        Push enemies off the platform to win!
     </div>
     <div id="gameOver">
         <h2>You fell off the platform!</h2>
@@ -51,6 +54,7 @@
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="characters.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

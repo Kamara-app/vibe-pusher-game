@@ -9,6 +9,16 @@ let jumpStrength = 4; // Reduced from 6 to 4
 let speed = 0.2;
 let gameActive = true;
 
+// Direction tracking
+let facingDirection = new THREE.Vector3(0, 0, -1); // Default facing forward (negative z)
+let smileyFace, pushArm;
+let isPushing = false;
+let pushCooldown = false;
+let lastPushTime = 0;
+const PUSH_COOLDOWN_TIME = 500; // 500ms cooldown
+const PUSH_DISTANCE = 2; // How far the push affects
+const PUSH_FORCE = 2; // How strong the push is
+
 // Enemy variables
 let enemies = [];
 const enemyCount = 5;
@@ -75,13 +85,15 @@ function createPlatform() {
     // Removed all border objects (northBorder, southBorder, eastBorder, westBorder)
 }
 
-// Create the player character
+// Create the player character and related elements
 function createCharacter() {
-    const characterGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-    const characterMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
-    character = new THREE.Mesh(characterGeometry, characterMaterial);
-    character.position.set(0, 3, 0); // Updated to be on top of the elevated platform (2 + 0.5 + 0.5)
-    scene.add(character);
+    // Create the main character, direction indicator, and push arm
+    character = createCharacter(scene);
+    smileyFace = createDirectionIndicator(scene);
+    pushArm = createPushArm(scene);
+    
+    // Position the smiley face in front of the character
+    updateSmileyPosition(smileyFace, character, facingDirection);
 }
 
 // Create enemies
@@ -92,31 +104,8 @@ function createEnemies() {
     }
     enemies = [];
     
-    // Create new enemies
-    for (let i = 0; i < enemyCount; i++) {
-        const enemyGeometry = new THREE.SphereGeometry(enemySize, 32, 32);
-        const enemyMaterial = new THREE.MeshStandardMaterial({ color: enemyColor });
-        const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
-        
-        // Random position on the platform
-        const x = Math.random() * 16 - 8; // Range: -8 to 8
-        const z = Math.random() * 16 - 8; // Range: -8 to 8
-        enemy.position.set(x, platform.position.y + enemySize + 0.5, z);
-        
-        // Add random movement direction
-        enemy.direction = new THREE.Vector3(
-            Math.random() * 2 - 1,
-            0,
-            Math.random() * 2 - 1
-        ).normalize();
-        
-        // Add change direction timer
-        enemy.nextDirectionChange = Math.random() * 2000 + 1000; // 1-3 seconds
-        enemy.lastDirectionChange = Date.now();
-        
-        scene.add(enemy);
-        enemies.push(enemy);
-    }
+    // Create new enemies using the function from characters.js
+    enemies = createEnemies(scene, platform, enemyCount, enemySize, enemyColor);
 }
 
 // Update enemy positions
@@ -185,6 +174,54 @@ function checkCollisions() {
     }
 }
 
+// Perform push attack
+function pushAttack() {
+    if (pushCooldown) return;
+    
+    isPushing = true;
+    pushCooldown = true;
+    lastPushTime = Date.now();
+    
+    // Check for enemies in front of the player
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        
+        // Calculate vector from player to enemy
+        const toEnemy = new THREE.Vector3().subVectors(enemy.position, character.position);
+        
+        // Project this vector onto the facing direction to get distance in that direction
+        const distanceInFacingDirection = toEnemy.dot(facingDirection);
+        
+        // Calculate perpendicular distance (how far off the center line the enemy is)
+        const perpendicularVector = new THREE.Vector3().copy(toEnemy);
+        perpendicularVector.sub(facingDirection.clone().multiplyScalar(distanceInFacingDirection));
+        const perpendicularDistance = perpendicularVector.length();
+        
+        // If enemy is in front of player (within a cone) and within push distance
+        if (distanceInFacingDirection > 0 && 
+            distanceInFacingDirection < PUSH_DISTANCE && 
+            perpendicularDistance < PUSH_DISTANCE / 2) {
+            
+            // Push the enemy away
+            const pushVector = facingDirection.clone().multiplyScalar(PUSH_FORCE);
+            enemy.position.add(pushVector);
+            
+            // Also change the enemy's direction
+            enemy.direction.copy(facingDirection);
+        }
+    }
+    
+    // Reset push state after a short delay
+    setTimeout(() => {
+        isPushing = false;
+    }, 200);
+    
+    // Reset cooldown after the specified time
+    setTimeout(() => {
+        pushCooldown = false;
+    }, PUSH_COOLDOWN_TIME);
+}
+
 // Handle key down events
 function onKeyDown(event) {
     if (!gameActive) return;
@@ -193,24 +230,34 @@ function onKeyDown(event) {
         case 'ArrowUp':
         case 'KeyW':
             moveForward = true;
+            facingDirection.set(0, 0, -1);
             break;
             
         case 'ArrowLeft':
         case 'KeyA':
             moveLeft = true;
+            facingDirection.set(-1, 0, 0);
             break;
             
         case 'ArrowDown':
         case 'KeyS':
             moveBackward = true;
+            facingDirection.set(0, 0, 1);
             break;
             
         case 'ArrowRight':
         case 'KeyD':
             moveRight = true;
+            facingDirection.set(1, 0, 0);
             break;
             
         case 'Space':
+            // Space now performs push attack
+            pushAttack();
+            break;
+            
+        case 'KeyE':
+            // E key now performs jump
             if (canJump) {
                 velocity.y = jumpStrength;
                 canJump = false;
@@ -267,19 +314,29 @@ function updateCharacter() {
     // Move character based on controls
     if (moveForward) {
         character.position.z -= speed;
+        facingDirection.set(0, 0, -1);
     }
     
     if (moveBackward) {
         character.position.z += speed;
+        facingDirection.set(0, 0, 1);
     }
     
     if (moveLeft) {
         character.position.x -= speed;
+        facingDirection.set(-1, 0, 0);
     }
     
     if (moveRight) {
         character.position.x += speed;
+        facingDirection.set(1, 0, 0);
     }
+    
+    // Update smiley face position
+    updateSmileyPosition(smileyFace, character, facingDirection);
+    
+    // Update push arm position
+    updatePushArm(pushArm, character, facingDirection, isPushing);
     
     // Check if character fell off the platform
     if (!isOnPlatform() && character.position.y < 3) {
@@ -325,6 +382,9 @@ function resetGame() {
     moveRight = false;
     canJump = true;
     gameActive = true;
+    facingDirection.set(0, 0, -1); // Reset facing direction
+    isPushing = false;
+    pushCooldown = false;
     document.getElementById('gameOver').style.display = 'none';
     
     // Recreate enemies
