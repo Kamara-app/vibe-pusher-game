@@ -25,25 +25,21 @@ function onKeyDown(event) {
         case 'ArrowUp':
         case 'KeyW':
             moveForward = true;
-            facingDirection.set(0, 0, -1);
             break;
             
         case 'ArrowLeft':
         case 'KeyA':
             moveLeft = true;
-            facingDirection.set(-1, 0, 0);
             break;
             
         case 'ArrowDown':
         case 'KeyS':
             moveBackward = true;
-            facingDirection.set(0, 0, 1);
             break;
             
         case 'ArrowRight':
         case 'KeyD':
             moveRight = true;
-            facingDirection.set(1, 0, 0);
             break;
             
         case 'Space':
@@ -95,6 +91,23 @@ function onKeyUp(event) {
     }
 }
 
+// Calculate movement direction based on key states
+function calculateMovementDirection() {
+    const direction = new THREE.Vector3(0, 0, 0);
+    
+    if (moveForward) direction.z -= 1;
+    if (moveBackward) direction.z += 1;
+    if (moveLeft) direction.x -= 1;
+    if (moveRight) direction.x += 1;
+    
+    // Normalize the direction vector for consistent speed in all directions
+    if (direction.length() > 0) {
+        direction.normalize();
+    }
+    
+    return direction;
+}
+
 // Handle window resize
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -112,25 +125,17 @@ function updateCharacterPosition(character, speed, velocity, platform) {
         return;
     }
     
-    // Move character based on controls
-    if (moveForward) {
-        character.position.z -= speed;
-        facingDirection.set(0, 0, -1);
-    }
+    // Calculate the movement direction based on key states
+    const movementDirection = calculateMovementDirection();
     
-    if (moveBackward) {
-        character.position.z += speed;
-        facingDirection.set(0, 0, 1);
-    }
-    
-    if (moveLeft) {
-        character.position.x -= speed;
-        facingDirection.set(-1, 0, 0);
-    }
-    
-    if (moveRight) {
-        character.position.x += speed;
-        facingDirection.set(1, 0, 0);
+    // Only update position and facing direction if there's movement
+    if (movementDirection.length() > 0) {
+        // Update character position
+        character.position.x += movementDirection.x * speed;
+        character.position.z += movementDirection.z * speed;
+        
+        // Update facing direction to match movement direction
+        facingDirection.copy(movementDirection);
     }
     
     // No platform boundary restrictions for player
