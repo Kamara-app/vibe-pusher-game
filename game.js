@@ -147,8 +147,8 @@ function updateCharacter() {
     character.position.y += velocity.y * 0.1;
     
     // Check if character is on the ground
-    if (character.position.y <= 3 && isOnPlatform()) {
-        character.position.y = 3; // 2 (platform height) + 0.5 (half character height) + 0.5 (half platform height)
+    if (character.position.y <= platform.position.y + 1 && isOnPlatform()) {
+        character.position.y = platform.position.y + 1; // platform height + half character height + half platform height
         velocity.y = 0;
         canJump = true;
     }
