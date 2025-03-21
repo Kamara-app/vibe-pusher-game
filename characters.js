@@ -48,15 +48,57 @@ function createDirectionIndicator(scene) {
     return eyesGroup;
 }
 
-// Create push arm for attack animation
+// Create push arm for attack animation (semi-sphere)
 function createPushArm(scene) {
-    const armGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.8);
-    const armMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
+    // Create a semi-sphere for the push effect
+    const armGeometry = new THREE.SphereGeometry(0.6, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+    const armMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x0088FF,
+        transparent: true,
+        opacity: 0.7
+    });
     const pushArm = new THREE.Mesh(armGeometry, armMaterial);
     pushArm.visible = false; // Hide initially
     scene.add(pushArm);
     
     return pushArm;
+}
+
+// Create cooldown indicator
+function createCooldownIndicator(scene) {
+    const indicatorGeometry = new THREE.PlaneGeometry(0.8, 0.15);
+    const indicatorMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xFF0000,
+        transparent: true,
+        opacity: 0.8
+    });
+    const cooldownIndicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+    
+    // Create background for the indicator
+    const bgGeometry = new THREE.PlaneGeometry(0.82, 0.17);
+    const bgMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.5
+    });
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    
+    // Group the indicator and background
+    const indicatorGroup = new THREE.Group();
+    indicatorGroup.add(background);
+    indicatorGroup.add(cooldownIndicator);
+    
+    // Position the indicator slightly behind the background
+    cooldownIndicator.position.z = 0.01;
+    
+    indicatorGroup.visible = false; // Hide initially
+    scene.add(indicatorGroup);
+    
+    return {
+        group: indicatorGroup,
+        indicator: cooldownIndicator,
+        background: background
+    };
 }
 
 // Update eyes position based on character position and facing direction
@@ -79,13 +121,54 @@ function updatePushArm(pushArm, character, facingDirection, isPushing) {
         pushArm.visible = true;
         pushArm.position.copy(character.position);
         
-        // Position the arm in front of the character
-        pushArm.position.add(facingDirection.clone().multiplyScalar(0.4));
+        // Position the semi-sphere in front of the character
+        pushArm.position.add(facingDirection.clone().multiplyScalar(0.5));
         
-        // Rotate the arm to align with the facing direction
+        // Rotate the semi-sphere to align with the facing direction
         pushArm.rotation.y = Math.atan2(facingDirection.x, facingDirection.z);
+        
+        // Rotate the semi-sphere so the flat part faces outward
+        if (facingDirection.z < 0) {
+            pushArm.rotation.x = -Math.PI / 2;
+        } else if (facingDirection.z > 0) {
+            pushArm.rotation.x = Math.PI / 2;
+        } else if (facingDirection.x < 0) {
+            pushArm.rotation.x = 0;
+            pushArm.rotation.z = -Math.PI / 2;
+        } else if (facingDirection.x > 0) {
+            pushArm.rotation.x = 0;
+            pushArm.rotation.z = Math.PI / 2;
+        }
     } else {
         pushArm.visible = false;
+    }
+}
+
+// Update cooldown indicator
+function updateCooldownIndicator(cooldownIndicator, character, isPushCooldown, lastPushTime, cooldownTime) {
+    if (isPushCooldown) {
+        // Show the indicator
+        cooldownIndicator.group.visible = true;
+        
+        // Position above the character
+        cooldownIndicator.group.position.copy(character.position);
+        cooldownIndicator.group.position.y += 1.0;
+        
+        // Face the indicator toward the camera
+        cooldownIndicator.group.rotation.x = Math.PI / 2;
+        
+        // Calculate remaining cooldown percentage
+        const elapsed = Date.now() - lastPushTime;
+        const remainingPercentage = 1 - (elapsed / cooldownTime);
+        
+        // Update the indicator width based on remaining cooldown
+        cooldownIndicator.indicator.scale.x = Math.max(0, remainingPercentage);
+        
+        // Adjust position to ensure it shrinks from right to left
+        cooldownIndicator.indicator.position.x = (1 - cooldownIndicator.indicator.scale.x) * -0.4;
+    } else {
+        // Hide the indicator when cooldown is complete
+        cooldownIndicator.group.visible = false;
     }
 }
 
