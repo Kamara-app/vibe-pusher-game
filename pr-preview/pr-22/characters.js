@@ -80,7 +80,16 @@ function updateSmileyPosition(smileyFace, character, facingDirection) {
     
     // Tilt the smiley face upward for better visibility from the camera
     // Apply a rotation to tilt it slightly upward (around the X-axis)
+    // Tilt the smiley face upward for better visibility from the camera
+    // Apply a rotation to tilt it slightly upward (around the X-axis)
     smileyFace.rotation.x = Math.PI * 0.15;
+    
+    // Make smiley face look in the same direction as the character
+    // but preserve the X rotation we just set
+    const lookAtPos = smileyFace.position.clone().add(facingDirection);
+    const currentXRotation = smileyFace.rotation.x;
+    smileyFace.lookAt(lookAtPos);
+    smileyFace.rotation.x = currentXRotation;
 }
 
 // Update push arm position and rotation
