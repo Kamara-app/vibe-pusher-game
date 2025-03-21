@@ -2,7 +2,7 @@
 
 // Physics constants
 const GRAVITY = 0.2;
-const PUSH_DISTANCE = 2; // How far the push affects
+const PUSH_DISTANCE = 5; // How far the push affects
 const PUSH_FORCE = 2; // How strong the push is
 
 // Apply physics to character
