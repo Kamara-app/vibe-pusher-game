@@ -66,20 +66,21 @@ function createPushArm(scene) {
 
 // Create cooldown indicator
 function createCooldownIndicator(scene) {
-    const indicatorGeometry = new THREE.PlaneGeometry(0.8, 0.15);
+    // Make the indicator larger and more visible
+    const indicatorGeometry = new THREE.PlaneGeometry(1.0, 0.2); // Increased size
     const indicatorMaterial = new THREE.MeshBasicMaterial({ 
         color: 0xFF0000,
         transparent: true,
-        opacity: 0.8
+        opacity: 1.0 // Full opacity for better visibility
     });
     const cooldownIndicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
     
     // Create background for the indicator
-    const bgGeometry = new THREE.PlaneGeometry(0.82, 0.17);
+    const bgGeometry = new THREE.PlaneGeometry(1.02, 0.22); // Slightly larger than the indicator
     const bgMaterial = new THREE.MeshBasicMaterial({ 
         color: 0x000000,
         transparent: true,
-        opacity: 0.5
+        opacity: 0.8 // Increased opacity for better visibility
     });
     const background = new THREE.Mesh(bgGeometry, bgMaterial);
     
@@ -91,7 +92,10 @@ function createCooldownIndicator(scene) {
     // Position the indicator slightly behind the background
     cooldownIndicator.position.z = 0.01;
     
-    indicatorGroup.visible = false; // Hide initially
+    // Make sure the indicator is visible by default (for debugging)
+    indicatorGroup.visible = true; 
+    
+    // Add the indicator to the scene
     scene.add(indicatorGroup);
     
     return {
@@ -152,10 +156,15 @@ function updateCooldownIndicator(cooldownIndicator, character, isPushCooldown, l
         
         // Position above the character (increased height for better visibility)
         cooldownIndicator.group.position.copy(character.position);
-        cooldownIndicator.group.position.y += 1.5;
+        cooldownIndicator.group.position.y += 2.0; // Increased from 1.5 to 2.0 for better visibility
         
-        // Face the indicator toward the camera
-        cooldownIndicator.group.rotation.x = Math.PI / 2;
+        // Make sure the indicator always faces the camera
+        cooldownIndicator.group.rotation.set(0, 0, 0); // Reset rotation
+        cooldownIndicator.group.lookAt(camera.position); // Make it face the camera
+        
+        // Make the indicator more visible
+        cooldownIndicator.indicator.material.opacity = 1.0; // Full opacity
+        cooldownIndicator.background.material.opacity = 0.8; // Increased background opacity
         
         // Calculate remaining cooldown percentage
         const elapsed = Date.now() - lastPushTime;
@@ -166,6 +175,9 @@ function updateCooldownIndicator(cooldownIndicator, character, isPushCooldown, l
         
         // Adjust position to ensure it shrinks from right to left
         cooldownIndicator.indicator.position.x = (1 - cooldownIndicator.indicator.scale.x) * -0.4;
+        
+        // Debug - log to console when cooldown is active
+        console.log("Cooldown active: " + remainingPercentage.toFixed(2));
     } else {
         // Hide the indicator when cooldown is complete
         cooldownIndicator.group.visible = false;
