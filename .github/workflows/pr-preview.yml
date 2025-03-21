@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -15,16 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v4
-
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1
         with:
-          source-dir: '.'
-          preview-branch: gh-pages
-          umbrella-dir: pr-preview
-          auto-create-branch: true
+          source-dir: '.'                 # Directory to deploy from (your root in this case)
+          preview-branch: gh-pages        # Branch to deploy preview content
+          umbrella-dir: pr-preview        # Folder under branch to contain PR previews
+          auto-create-branch: true        # Automatically creates the branch if missing
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Find Existing Comment
         uses: peter-evans/find-comment@v3
