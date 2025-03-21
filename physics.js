@@ -18,7 +18,10 @@ function applyPhysics(character, velocity, platform) {
     character.position.y += velocity.y * 0.1;
     
     // Check if character is on the ground
-    if (character.position.y <= platform.position.y + 1 && isOnPlatform(character, platform)) {
+    // Only set position when falling onto platform from above (velocity.y < 0)
+    if (character.position.y <= platform.position.y + 1 && 
+        velocity.y <= 0 && 
+        isOnPlatform(character, platform)) {
         character.position.y = platform.position.y + 1; // platform height + half character height + half platform height
         velocity.y = 0;
     }
@@ -114,8 +117,7 @@ function checkCollisions(character, enemies, velocity) {
             character.position.x += pushDirection.x * 0.2;
             character.position.z += pushDirection.z * 0.2;
             
-            // Optional: make the player bounce a bit
-            velocity.y = 1;
+            // Removed the bounce effect (velocity.y = 1)
         }
     }
 }
