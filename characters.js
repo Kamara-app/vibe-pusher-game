@@ -55,7 +55,7 @@ function createPushArm(scene) {
     const armMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x0088FF,
         transparent: true,
-        opacity: 0.7
+        opacity: 0.7 // Semi-transparent to allow visibility through the effect while maintaining visual clarity
     });
     const pushArm = new THREE.Mesh(armGeometry, armMaterial);
     pushArm.visible = false; // Hide initially
