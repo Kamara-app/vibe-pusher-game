@@ -5,7 +5,7 @@ let moveForward = false, moveBackward = false, moveLeft = false, moveRight = fal
 let canJump = true;
 let velocity = new THREE.Vector3();
 let gravity = 0.2;
-let jumpStrength = 6;
+let jumpStrength = 4; // Reduced from 6 to 4
 let speed = 0.2;
 let gameActive = true;
 
@@ -53,41 +53,16 @@ function init() {
     animate();
 }
 
-// Create the platform with borders
+// Create the platform without borders
 function createPlatform() {
     // Main platform
     const platformGeometry = new THREE.BoxGeometry(20, 1, 20);
     const platformMaterial = new THREE.MeshStandardMaterial({ color: 0x00FF00 });
     platform = new THREE.Mesh(platformGeometry, platformMaterial);
-    platform.position.y = -0.5;
+    platform.position.y = 2; // Elevated from -0.5 to 2
     scene.add(platform);
     
-    // Platform borders (walls)
-    const borderMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
-    
-    // North border
-    const northBorderGeometry = new THREE.BoxGeometry(20, 1, 1);
-    const northBorder = new THREE.Mesh(northBorderGeometry, borderMaterial);
-    northBorder.position.set(0, 0, -10);
-    scene.add(northBorder);
-    
-    // South border
-    const southBorderGeometry = new THREE.BoxGeometry(20, 1, 1);
-    const southBorder = new THREE.Mesh(southBorderGeometry, borderMaterial);
-    southBorder.position.set(0, 0, 10);
-    scene.add(southBorder);
-    
-    // East border
-    const eastBorderGeometry = new THREE.BoxGeometry(1, 1, 20);
-    const eastBorder = new THREE.Mesh(eastBorderGeometry, borderMaterial);
-    eastBorder.position.set(10, 0, 0);
-    scene.add(eastBorder);
-    
-    // West border
-    const westBorderGeometry = new THREE.BoxGeometry(1, 1, 20);
-    const westBorder = new THREE.Mesh(westBorderGeometry, borderMaterial);
-    westBorder.position.set(-10, 0, 0);
-    scene.add(westBorder);
+    // Removed all border objects (northBorder, southBorder, eastBorder, westBorder)
 }
 
 // Create the player character
@@ -95,7 +70,7 @@ function createCharacter() {
     const characterGeometry = new THREE.SphereGeometry(0.5, 32, 32);
     const characterMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
     character = new THREE.Mesh(characterGeometry, characterMaterial);
-    character.position.set(0, 0.5, 0);
+    character.position.set(0, 3, 0); // Updated to be on top of the elevated platform (2 + 0.5 + 0.5)
     scene.add(character);
 }
 
@@ -172,8 +147,8 @@ function updateCharacter() {
     character.position.y += velocity.y * 0.1;
     
     // Check if character is on the ground
-    if (character.position.y <= 0.5) {
-        character.position.y = 0.5;
+    if (character.position.y <= 3 && isOnPlatform()) {
+        character.position.y = 3; // 2 (platform height) + 0.5 (half character height) + 0.5 (half platform height)
         velocity.y = 0;
         canJump = true;
     }
@@ -196,21 +171,30 @@ function updateCharacter() {
     }
     
     // Check if character fell off the platform
-    if (
-        character.position.x < -10 || 
-        character.position.x > 10 || 
-        character.position.z < -10 || 
-        character.position.z > 10
-    ) {
-        if (character.position.y < -10) {
-            gameOver();
-        }
+    if (!isOnPlatform() && character.position.y < 3) {
+        canJump = false;
+        // Let gravity do its work
+    }
+    
+    // Check if character fell too far
+    if (character.position.y < -10) {
+        gameOver();
     }
     
     // Update camera to follow character
     camera.position.x = character.position.x;
     camera.position.z = character.position.z + 10;
     camera.lookAt(character.position);
+}
+
+// Check if character is above the platform
+function isOnPlatform() {
+    return (
+        character.position.x >= -10 && 
+        character.position.x <= 10 && 
+        character.position.z >= -10 && 
+        character.position.z <= 10
+    );
 }
 
 // Game over function
@@ -221,7 +205,7 @@ function gameOver() {
 
 // Reset game function
 function resetGame() {
-    character.position.set(0, 0.5, 0);
+    character.position.set(0, 3, 0); // Updated to be on top of the elevated platform
     velocity.set(0, 0, 0);
     moveForward = false;
     moveBackward = false;
