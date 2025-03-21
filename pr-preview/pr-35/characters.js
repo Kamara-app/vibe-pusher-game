@@ -1,0 +1,309 @@
+// Character creation and management functions
+
+// Create the player character
+function createCharacter(scene) {
+    const characterGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+    const characterMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
+    const character = new THREE.Mesh(characterGeometry, characterMaterial);
+    character.position.set(0, 3, 0); // On top of the elevated platform (2 + 0.5 + 0.5)
+    scene.add(character);
+    
+    return character;
+}
+
+// Create direction indicator (eyes)
+function createDirectionIndicator(scene) {
+    // Create a group to hold both eyes
+    const eyesGroup = new THREE.Group();
+    
+    // Create white spheres for the eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+    
+    // Left eye
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.2, 0.3, 0);
+    eyesGroup.add(leftEye);
+    
+    // Right eye
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.2, 0.3, 0);
+    eyesGroup.add(rightEye);
+    
+    // Create black pupils
+    const pupilGeometry = new THREE.SphereGeometry(0.06, 12, 12);
+    const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    
+    // Left pupil
+    const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    leftPupil.position.set(0, 0, 0.09);
+    leftEye.add(leftPupil);
+    
+    // Right pupil
+    const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    rightPupil.position.set(0, 0, 0.09);
+    rightEye.add(rightPupil);
+    
+    scene.add(eyesGroup);
+    return eyesGroup;
+}
+
+// Create push arm for attack animation (semi-sphere)
+function createPushArm(scene) {
+    // Create a semi-sphere for the push effect
+    const armGeometry = new THREE.SphereGeometry(0.6, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+    const armMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x0088FF,
+        transparent: true,
+        opacity: 0.7
+    });
+    const pushArm = new THREE.Mesh(armGeometry, armMaterial);
+    pushArm.visible = false; // Hide initially
+    scene.add(pushArm);
+    
+    return pushArm;
+}
+
+// Create cooldown indicator
+function createCooldownIndicator(scene) {
+    const indicatorGeometry = new THREE.PlaneGeometry(0.8, 0.15);
+    const indicatorMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xFF0000,
+        transparent: true,
+        opacity: 0.8
+    });
+    const cooldownIndicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+    
+    // Create background for the indicator
+    const bgGeometry = new THREE.PlaneGeometry(0.82, 0.17);
+    const bgMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.5
+    });
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    
+    // Group the indicator and background
+    const indicatorGroup = new THREE.Group();
+    indicatorGroup.add(background);
+    indicatorGroup.add(cooldownIndicator);
+    
+    // Position the indicator slightly behind the background
+    cooldownIndicator.position.z = 0.01;
+    
+    indicatorGroup.visible = false; // Hide initially
+    scene.add(indicatorGroup);
+    
+    return {
+        group: indicatorGroup,
+        indicator: cooldownIndicator,
+        background: background
+    };
+}
+
+// Update eyes position based on character position and facing direction
+function updateSmileyPosition(eyesGroup, character, facingDirection) {
+    // Position eyes directly on top of the character
+    eyesGroup.position.copy(character.position);
+    
+    // Make eyes look in the direction the character is facing
+    const lookAtPos = eyesGroup.position.clone().add(facingDirection);
+    eyesGroup.lookAt(lookAtPos);
+    
+    // Adjust rotation to keep eyes level but looking in the right direction
+    eyesGroup.rotation.x = 0;
+    eyesGroup.rotation.z = 0;
+}
+
+// Update push arm position and rotation
+function updatePushArm(pushArm, character, facingDirection, isPushing) {
+    if (isPushing) {
+        pushArm.visible = true;
+        pushArm.position.copy(character.position);
+        
+        // Position the semi-sphere in front of the character
+        pushArm.position.add(facingDirection.clone().multiplyScalar(0.5));
+        
+        // Rotate the semi-sphere to align with the facing direction
+        pushArm.rotation.y = Math.atan2(facingDirection.x, facingDirection.z);
+        
+        // Rotate the semi-sphere so the flat part faces outward
+        if (facingDirection.z < 0) {
+            pushArm.rotation.x = -Math.PI / 2;
+        } else if (facingDirection.z > 0) {
+            pushArm.rotation.x = Math.PI / 2;
+        } else if (facingDirection.x < 0) {
+            pushArm.rotation.x = 0;
+            pushArm.rotation.z = -Math.PI / 2;
+        } else if (facingDirection.x > 0) {
+            pushArm.rotation.x = 0;
+            pushArm.rotation.z = Math.PI / 2;
+        }
+    } else {
+        pushArm.visible = false;
+    }
+}
+
+// Update cooldown indicator
+function updateCooldownIndicator(cooldownIndicator, character, isPushCooldown, lastPushTime, cooldownTime) {
+    if (isPushCooldown) {
+        // Show the indicator
+        cooldownIndicator.group.visible = true;
+        
+        // Position above the character
+        cooldownIndicator.group.position.copy(character.position);
+        cooldownIndicator.group.position.y += 1.0;
+        
+        // Face the indicator toward the camera
+        cooldownIndicator.group.rotation.x = Math.PI / 2;
+        
+        // Calculate remaining cooldown percentage
+        const elapsed = Date.now() - lastPushTime;
+        const remainingPercentage = 1 - (elapsed / cooldownTime);
+        
+        // Update the indicator width based on remaining cooldown
+        cooldownIndicator.indicator.scale.x = Math.max(0, remainingPercentage);
+        
+        // Adjust position to ensure it shrinks from right to left
+        cooldownIndicator.indicator.position.x = (1 - cooldownIndicator.indicator.scale.x) * -0.4;
+    } else {
+        // Hide the indicator when cooldown is complete
+        cooldownIndicator.group.visible = false;
+    }
+}
+
+// Create enemies
+function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
+    const enemies = [];
+    
+    // Create new enemies
+    for (let i = 0; i < enemyCount; i++) {
+        const enemyGeometry = new THREE.SphereGeometry(enemySize, 32, 32);
+        const enemyMaterial = new THREE.MeshStandardMaterial({ color: enemyColor });
+        const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
+        
+        // Random position on the platform
+        const x = Math.random() * 16 - 8; // Range: -8 to 8
+        const z = Math.random() * 16 - 8; // Range: -8 to 8
+        
+        // Position enemy exactly at platform height + enemy size to ensure it's on the platform
+        enemy.position.set(x, platform.position.y + PLATFORM_HEIGHT, z);
+        
+        // Store enemy properties in userData for better organization
+        enemy.userData = {
+            size: enemySize,
+            direction: new THREE.Vector3(
+                Math.random() * 2 - 1,
+                0,
+                Math.random() * 2 - 1
+            ).normalize(),
+            nextDirectionChange: Math.random() * 2000 + 1000, // 1-3 seconds
+            lastDirectionChange: Date.now(),
+            isFalling: false,
+            velocity: { y: 0 },
+            pushVelocity: new THREE.Vector3(0, 0, 0), // Initialize push velocity
+            isOnPlatform: true // Initialize as being on the platform
+        };
+        
+        scene.add(enemy);
+        enemies.push(enemy);
+    }
+    
+    return enemies;
+}
+
+// Helper function to handle boundary collisions
+function handleBoundaryCollision(enemy, minBound, maxBound, axis) {
+    // Only apply boundary restrictions if the enemy is not being pushed
+    if (!enemy.userData.isPushed) {
+        if (enemy.position[axis] < minBound) {
+            enemy.position[axis] = minBound;
+            enemy.userData.direction[axis] *= -1;
+            if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
+        } else if (enemy.position[axis] > maxBound) {
+            enemy.position[axis] = maxBound;
+            enemy.userData.direction[axis] *= -1;
+            if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
+        }
+    }
+}
+
+// Update enemy positions
+function updateEnemies(enemies, enemySpeed, platform) {
+    const now = Date.now();
+    const enemiesToRemove = [];
+    const PUSH_DECELERATION = 0.15; // How quickly push velocity decreases
+    
+    for (let i = 0; i < enemies.length; i++) {
+        const enemy = enemies[i];
+        
+        // Apply physics to enemy
+        const enemyStaysInGame = applyEnemyPhysics(enemy, platform);
+        if (!enemyStaysInGame) {
+            enemiesToRemove.push(i);
+            continue;
+        }
+        
+        // Skip movement logic if enemy is falling
+        if (enemy.userData.isFalling) {
+            continue;
+        }
+        
+        // Check if it's time to change direction
+        if (now - enemy.userData.lastDirectionChange > enemy.userData.nextDirectionChange) {
+            enemy.userData.direction = new THREE.Vector3(
+                Math.random() * 2 - 1,
+                0,
+                Math.random() * 2 - 1
+            ).normalize();
+            
+            enemy.userData.nextDirectionChange = Math.random() * 2000 + 1000;
+            enemy.userData.lastDirectionChange = now;
+        }
+        
+        // Handle push velocity first
+        let movementFromPush = false;
+        if (enemy.userData.pushVelocity && 
+            (Math.abs(enemy.userData.pushVelocity.x) > 0.01 || 
+             Math.abs(enemy.userData.pushVelocity.z) > 0.01)) {
+            
+            // Apply push velocity
+            enemy.position.x += enemy.userData.pushVelocity.x;
+            enemy.position.z += enemy.userData.pushVelocity.z;
+            
+            // Gradually reduce push velocity (deceleration)
+            enemy.userData.pushVelocity.x *= (1 - PUSH_DECELERATION);
+            enemy.userData.pushVelocity.z *= (1 - PUSH_DECELERATION);
+            
+            // If push velocity is very small, reset it to zero
+            if (Math.abs(enemy.userData.pushVelocity.x) < 0.01) enemy.userData.pushVelocity.x = 0;
+            if (Math.abs(enemy.userData.pushVelocity.z) < 0.01) enemy.userData.pushVelocity.z = 0;
+            
+            movementFromPush = true;
+        }
+        
+        // Only apply normal movement if not being pushed
+        if (!movementFromPush) {
+            // Move enemy with normal movement
+            enemy.position.x += enemy.userData.direction.x * enemySpeed;
+            enemy.position.z += enemy.userData.direction.z * enemySpeed;
+        }
+        
+        // Keep enemy on platform - only if they're still on the platform and not being pushed
+        if (isOnPlatform(enemy, platform)) {
+            // Handle boundary collisions
+            handleBoundaryCollision(enemy, -ENEMY_BOUNDARY, ENEMY_BOUNDARY, 'x');
+            handleBoundaryCollision(enemy, -ENEMY_BOUNDARY, ENEMY_BOUNDARY, 'z');
+        }
+    }
+    
+    // Remove enemies that fell too far
+    for (let i = enemiesToRemove.length - 1; i >= 0; i--) {
+        const index = enemiesToRemove[i];
+        const enemy = enemies[index];
+        enemy.parent.remove(enemy); // Remove from scene
+        enemies.splice(index, 1); // Remove from array
+    }
+    
+    return enemies;
+}
