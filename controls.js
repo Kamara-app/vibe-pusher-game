@@ -56,10 +56,10 @@ function onKeyDown(event) {
                 // Perform the push attack
                 pushAttack(character, enemies, facingDirection);
                 
-                // Reset push state after a short delay
+                // Reset push state after a short delay (matching the push animation to the effect duration)
                 setTimeout(() => {
                     isPushing = false;
-                }, 200);
+                }, 300);
                 
                 // Reset cooldown after the specified time
                 setTimeout(() => {

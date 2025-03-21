@@ -2,8 +2,9 @@
 
 // Physics constants
 const GRAVITY = 0.2;
-const PUSH_DISTANCE = 3; // How far the push affects
-const PUSH_FORCE = 4; // How strong the push is
+const PUSH_DISTANCE = 2; // How far the push affects
+const PUSH_FORCE = 3; // How strong the push is
+const PUSH_DURATION = 500; // How long the push effect lasts (in ms)
 
 // Platform boundary constants
 const PLATFORM_HALF_WIDTH = 10; // Half width of the platform
@@ -52,6 +53,32 @@ function applyEnemyPhysics(enemy, platform) {
             enemy.userData.velocity.y = 0;
         }
         enemy.userData.isFalling = false;
+    }
+    
+    // Apply push force over time if enemy is being pushed
+    if (enemy.userData.isPushed) {
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - enemy.userData.pushStartTime;
+        
+        // Apply push force for the duration
+        if (elapsedTime < PUSH_DURATION) {
+            // Calculate remaining push force based on time elapsed (linear decay)
+            const remainingForceFactor = 1 - (elapsedTime / PUSH_DURATION);
+            
+            // Apply the push force gradually
+            const pushForceThisFrame = enemy.userData.pushVelocity.clone().multiplyScalar(remainingForceFactor * 0.1);
+            enemy.position.x += pushForceThisFrame.x;
+            enemy.position.z += pushForceThisFrame.z;
+            
+            // Keep enemy on platform
+            if (enemy.position.x < -ENEMY_BOUNDARY) enemy.position.x = -ENEMY_BOUNDARY;
+            if (enemy.position.x > ENEMY_BOUNDARY) enemy.position.x = ENEMY_BOUNDARY;
+            if (enemy.position.z < -ENEMY_BOUNDARY) enemy.position.z = -ENEMY_BOUNDARY;
+            if (enemy.position.z > ENEMY_BOUNDARY) enemy.position.z = ENEMY_BOUNDARY;
+        } else {
+            // Push effect has ended
+            enemy.userData.isPushed = false;
+        }
     }
     
     // Check if enemy fell too far (remove from game)
@@ -118,13 +145,17 @@ function pushAttack(character, enemies, facingDirection) {
             distanceInFacingDirection < PUSH_DISTANCE && 
             perpendicularDistance < PUSH_DISTANCE / 2) {
             
-            // Apply push velocity to the enemy instead of instantly moving them
+            // Initialize push velocity if it doesn't exist
             if (!enemy.userData.pushVelocity) {
                 enemy.userData.pushVelocity = new THREE.Vector3();
             }
             
             // Set the push velocity in the direction of the push
             enemy.userData.pushVelocity.copy(facingDirection).multiplyScalar(PUSH_FORCE);
+            
+            // Set the push state and start time
+            enemy.userData.isPushed = true;
+            enemy.userData.pushStartTime = Date.now();
             
             // Also change the enemy's direction
             enemy.userData.direction.copy(facingDirection);
