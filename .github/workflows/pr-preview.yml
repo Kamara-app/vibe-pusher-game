@@ -15,14 +15,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Add .nojekyll file
+        run: touch .nojekyll
+
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: '.'                 # Directory to deploy from (your root in this case)
           preview-branch: gh-pages        # Branch to deploy preview content
           umbrella-dir: pr-preview        # Folder under branch to contain PR previews
-          auto-create-branch: true        # Automatically creates the branch if missing
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Find Existing Comment
         uses: peter-evans/find-comment@v3
