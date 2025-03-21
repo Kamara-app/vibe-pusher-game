@@ -146,48 +146,55 @@ function updateCharacterPosition(character, speed, velocity, platform) {
 
 // Update character sprite based on movement direction
 function updateCharacterSprite(direction) {
-    // Determine the primary direction for sprite orientation
-    // For diagonal movement, prioritize the up/down component for visual representation
+    // Safety check to ensure character and its components exist
+    if (!character || !character.mesh) {
+        console.warn('Character or character.mesh is undefined');
+        return;
+    }
     
-    // Handle diagonal up cases specially
+    // Determine the primary direction for sprite orientation
     if (direction.z < 0) {  // Any upward movement
         if (direction.x < 0) {
             // Diagonal up-left
             character.mesh.rotation.y = Math.PI / 4; // 45 degrees
-            character.eyes.rotation.x = -Math.PI / 6; // Tilt eyes up slightly
         } else if (direction.x > 0) {
             // Diagonal up-right
             character.mesh.rotation.y = -Math.PI / 4; // -45 degrees
-            character.eyes.rotation.x = -Math.PI / 6; // Tilt eyes up slightly
         } else {
             // Pure up
             character.mesh.rotation.y = 0;
-            character.eyes.rotation.x = -Math.PI / 4; // Tilt eyes up
+        }
+        // Set eye rotation if eyes exist
+        if (character.eyes && character.eyes.rotation) {
+            character.eyes.rotation.x = -Math.PI / 6; // Tilt eyes up
         }
     } else if (direction.z > 0) {  // Any downward movement
         if (direction.x < 0) {
             // Diagonal down-left
             character.mesh.rotation.y = Math.PI * 3/4; // 135 degrees
-            character.eyes.rotation.x = Math.PI / 6; // Tilt eyes down slightly
         } else if (direction.x > 0) {
             // Diagonal down-right
             character.mesh.rotation.y = -Math.PI * 3/4; // -135 degrees
-            character.eyes.rotation.x = Math.PI / 6; // Tilt eyes down slightly
         } else {
             // Pure down
             character.mesh.rotation.y = Math.PI;
-            character.eyes.rotation.x = Math.PI / 4; // Tilt eyes down
+        }
+        // Set eye rotation if eyes exist
+        if (character.eyes && character.eyes.rotation) {
+            character.eyes.rotation.x = Math.PI / 6; // Tilt eyes down
         }
     } else {
         // Pure horizontal movement
         if (direction.x < 0) {
             // Pure left
             character.mesh.rotation.y = Math.PI / 2; // 90 degrees
-            character.eyes.rotation.x = 0; // Reset eye tilt
         } else if (direction.x > 0) {
             // Pure right
             character.mesh.rotation.y = -Math.PI / 2; // -90 degrees
-            character.eyes.rotation.x = 0; // Reset eye tilt
+        }
+        // Reset eye tilt if eyes exist
+        if (character.eyes && character.eyes.rotation) {
+            character.eyes.rotation.x = 0;
         }
     }
 }
