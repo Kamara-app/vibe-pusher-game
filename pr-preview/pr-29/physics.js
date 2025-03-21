@@ -3,7 +3,7 @@
 // Physics constants
 const GRAVITY = 0.2;
 const PUSH_DISTANCE = 2; // How far the push affects
-const PUSH_FORCE = 3; // How strong the push is
+const PUSH_FORCE = 2; // How strong the push is (reduced from 3)
 const PUSH_DURATION = 500; // How long the push effect lasts (in ms)
 
 // Platform boundary constants
@@ -13,14 +13,19 @@ const ENEMY_BOUNDARY = 9; // Enemy movement boundary
 
 // Apply physics to character
 function applyPhysics(character, velocity, platform) {
+    // Store previous position before applying gravity
+    const previousY = character.position.y;
+    
     // Apply gravity
     velocity.y -= GRAVITY;
     character.position.y += velocity.y * 0.1;
     
     // Check if character is on the ground
     // Only set position when falling onto platform from above (velocity.y < 0)
+    // AND the previous position was above the platform
     if (character.position.y <= platform.position.y + 1 && 
         velocity.y <= 0 && 
+        previousY > platform.position.y + 1 &&
         isOnPlatform(character, platform)) {
         character.position.y = platform.position.y + 1; // platform height + half character height + half platform height
         velocity.y = 0;

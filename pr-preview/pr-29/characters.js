@@ -128,14 +128,17 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
 
 // Helper function to handle boundary collisions
 function handleBoundaryCollision(enemy, minBound, maxBound, axis) {
-    if (enemy.position[axis] < minBound) {
-        enemy.position[axis] = minBound;
-        enemy.userData.direction[axis] *= -1;
-        if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
-    } else if (enemy.position[axis] > maxBound) {
-        enemy.position[axis] = maxBound;
-        enemy.userData.direction[axis] *= -1;
-        if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
+    // Only apply boundary restrictions if the enemy is not being pushed
+    if (!enemy.userData.isPushed) {
+        if (enemy.position[axis] < minBound) {
+            enemy.position[axis] = minBound;
+            enemy.userData.direction[axis] *= -1;
+            if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
+        } else if (enemy.position[axis] > maxBound) {
+            enemy.position[axis] = maxBound;
+            enemy.userData.direction[axis] *= -1;
+            if (enemy.userData.pushVelocity) enemy.userData.pushVelocity[axis] *= -0.5; // Bounce with reduced energy
+        }
     }
 }
 
@@ -200,7 +203,7 @@ function updateEnemies(enemies, enemySpeed, platform) {
             enemy.position.z += enemy.userData.direction.z * enemySpeed;
         }
         
-        // Keep enemy on platform - only if they're still on the platform
+        // Keep enemy on platform - only if they're still on the platform and not being pushed
         if (isOnPlatform(enemy, platform)) {
             // Handle boundary collisions
             handleBoundaryCollision(enemy, -ENEMY_BOUNDARY, ENEMY_BOUNDARY, 'x');
