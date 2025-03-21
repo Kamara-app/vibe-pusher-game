@@ -123,8 +123,14 @@ function pushAttack(character, enemies, facingDirection) {
                 enemy.userData.pushVelocity = new THREE.Vector3();
             }
             
-            // Set the push velocity in the direction of the push
-            enemy.userData.pushVelocity.copy(facingDirection).multiplyScalar(PUSH_FORCE);
+            // Start with a small initial push velocity
+            enemy.userData.pushVelocity.copy(facingDirection).multiplyScalar(PUSH_FORCE * 0.1);
+            
+            // Set up gradual push effect
+            enemy.userData.pushStartTime = Date.now();
+            enemy.userData.isPushingGradually = true;
+            enemy.userData.pushDirection = facingDirection.clone();
+            enemy.userData.pushDuration = 400; // 400ms for the push to reach full effect (doubled from previous ~200ms)
             
             // Also change the enemy's direction
             enemy.userData.direction.copy(facingDirection);
@@ -135,4 +141,32 @@ function pushAttack(character, enemies, facingDirection) {
 // Check if player is falling
 function isPlayerFalling(character, velocity, platform) {
     return character.position.y > platform.position.y + 1.1 && velocity.y < 0;
+}
+
+// Update gradual push effect for enemies
+function updateGradualPush(enemy) {
+    if (enemy.userData.isPushingGradually) {
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - enemy.userData.pushStartTime;
+        const pushDuration = enemy.userData.pushDuration || 400; // Default to 400ms if not set
+        
+        if (elapsedTime < pushDuration) {
+            // Calculate progress (0 to 1) based on elapsed time
+            const progress = elapsedTime / pushDuration;
+            
+            // Apply increasing force over time (easing function for smoother acceleration)
+            const easedProgress = progress * progress; // Quadratic easing
+            const currentForce = PUSH_FORCE * easedProgress;
+            
+            // Update push velocity
+            enemy.userData.pushVelocity.copy(enemy.userData.pushDirection).multiplyScalar(currentForce);
+            
+            // Apply the push velocity
+            enemy.position.add(enemy.userData.pushVelocity);
+        } else {
+            // Push is complete
+            enemy.userData.isPushingGradually = false;
+            enemy.userData.pushVelocity.set(0, 0, 0);
+        }
+    }
 }
