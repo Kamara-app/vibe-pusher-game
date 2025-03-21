@@ -71,11 +71,7 @@ function applyEnemyPhysics(enemy, platform) {
             enemy.position.x += pushForceThisFrame.x;
             enemy.position.z += pushForceThisFrame.z;
             
-            // Keep enemy on platform
-            if (enemy.position.x < -ENEMY_BOUNDARY) enemy.position.x = -ENEMY_BOUNDARY;
-            if (enemy.position.x > ENEMY_BOUNDARY) enemy.position.x = ENEMY_BOUNDARY;
-            if (enemy.position.z < -ENEMY_BOUNDARY) enemy.position.z = -ENEMY_BOUNDARY;
-            if (enemy.position.z > ENEMY_BOUNDARY) enemy.position.z = ENEMY_BOUNDARY;
+            // No platform boundary restrictions for enemies
         } else {
             // Push effect has ended
             enemy.userData.isPushed = false;
