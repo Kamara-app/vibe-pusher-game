@@ -54,7 +54,7 @@ function init() {
     createPlatform();
     
     // Create character
-    createCharacter();
+    initializeCharacter();
     
     // Create enemies
     createEnemies();
@@ -86,9 +86,11 @@ function createPlatform() {
 }
 
 // Create the player character and related elements
-function createCharacter() {
+// Note: This function was renamed from createCharacter to initializeCharacter
+// to avoid collision with the imported createCharacter function from characters.js
+function initializeCharacter() {
     // Create the main character, direction indicator, and push arm
-    character = createCharacter(scene);
+    character = createCharacter(scene);  // Calls the imported createCharacter function
     smileyFace = createDirectionIndicator(scene);
     pushArm = createPushArm(scene);
     
