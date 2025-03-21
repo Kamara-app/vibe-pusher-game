@@ -108,52 +108,6 @@ function calculateMovementDirection() {
     return direction;
 }
 
-// Update character visuals based on movement direction
-function updateCharacterVisuals(direction) {
-    // If we're moving in a diagonal that includes upward movement,
-    // make sure the character's eyes are oriented correctly
-    if (direction.z < 0) {  // Any upward movement
-        // Set the character's eyes to look upward
-        // This will override any left/right component for visual purposes only
-        character.lookUp();
-        
-        // If we also have horizontal movement, adjust for diagonal
-        if (direction.x !== 0) {
-            // For diagonal up-left or up-right, adjust the eye position accordingly
-            character.setDiagonalUp(direction.x < 0 ? 'left' : 'right');
-        }
-    } else if (direction.z > 0) {  // Downward movement
-        character.lookDown();
-        
-        // Handle diagonal down cases
-        if (direction.x !== 0) {
-            character.setDiagonalDown(direction.x < 0 ? 'left' : 'right');
-        }
-    } else if (direction.x < 0) {  // Pure left movement
-        character.lookLeft();
-    } else if (direction.x > 0) {  // Pure right movement
-        character.lookRight();
-    }
-}
-<-search>
-<-replace>
-// Calculate movement direction based on key states
-function calculateMovementDirection() {
-    const direction = new THREE.Vector3(0, 0, 0);
-    
-    if (moveForward) direction.z -= 1;
-    if (moveBackward) direction.z += 1;
-    if (moveLeft) direction.x -= 1;
-    if (moveRight) direction.x += 1;
-    
-    // Normalize the direction vector for consistent speed in all directions
-    if (direction.length() > 0) {
-        direction.normalize();
-    }
-    
-    return direction;
-}
-
 // Handle window resize
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
