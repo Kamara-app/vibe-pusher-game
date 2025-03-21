@@ -135,8 +135,8 @@ function updateCharacterVisuals(direction) {
         character.lookRight();
     }
 }
-</search>
-<replace>
+<-search>
+<-replace>
 // Calculate movement direction based on key states
 function calculateMovementDirection() {
     const direction = new THREE.Vector3(0, 0, 0);
