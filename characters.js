@@ -11,46 +11,41 @@ function createCharacter(scene) {
     return character;
 }
 
-// Create direction indicator (smiley face)
+// Create direction indicator (eyes)
 function createDirectionIndicator(scene) {
-    // Create smiley face indicator for direction - increased size
-    const smileyGeometry = new THREE.CircleGeometry(0.25, 32);
-    const smileyMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
-    const smileyFace = new THREE.Mesh(smileyGeometry, smileyMaterial);
+    // Create a group to hold both eyes
+    const eyesGroup = new THREE.Group();
     
-    // Add eyes and mouth to the smiley - slightly larger eyes
-    const leftEyeGeometry = new THREE.CircleGeometry(0.06, 16);
-    const rightEyeGeometry = new THREE.CircleGeometry(0.06, 16);
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    // Create white spheres for the eyes
+    const eyeGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
     
-    const leftEye = new THREE.Mesh(leftEyeGeometry, eyeMaterial);
-    leftEye.position.set(-0.08, 0.06, 0.01);
-    smileyFace.add(leftEye);
+    // Left eye
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.2, 0.3, 0);
+    eyesGroup.add(leftEye);
     
-    const rightEye = new THREE.Mesh(rightEyeGeometry, eyeMaterial);
-    rightEye.position.set(0.08, 0.06, 0.01);
-    smileyFace.add(rightEye);
+    // Right eye
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.2, 0.3, 0);
+    eyesGroup.add(rightEye);
     
-    // Create a more pronounced smile using a curved line
-    const smileGeometry = new THREE.BufferGeometry();
-    const smileCurve = new THREE.EllipseCurve(
-        0, -0.04, // center - slightly lower
-        0.12, 0.07, // x radius, y radius - larger smile
-        Math.PI, 0, // start angle, end angle
-        true // clockwise
-    );
-    const smilePoints = smileCurve.getPoints(30); // More points for smoother curve
-    smileGeometry.setFromPoints(smilePoints);
-    const smileMaterial = new THREE.LineBasicMaterial({ 
-        color: 0x000000,
-        linewidth: 2 // Thicker line for better visibility
-    });
-    const smile = new THREE.Line(smileGeometry, smileMaterial);
-    smile.position.z = 0.01;
-    smileyFace.add(smile);
+    // Create black pupils
+    const pupilGeometry = new THREE.SphereGeometry(0.06, 12, 12);
+    const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
     
-    scene.add(smileyFace);
-    return smileyFace;
+    // Left pupil
+    const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    leftPupil.position.set(0, 0, 0.09);
+    leftEye.add(leftPupil);
+    
+    // Right pupil
+    const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    rightPupil.position.set(0, 0, 0.09);
+    rightEye.add(rightPupil);
+    
+    scene.add(eyesGroup);
+    return eyesGroup;
 }
 
 // Create push arm for attack animation
@@ -64,32 +59,18 @@ function createPushArm(scene) {
     return pushArm;
 }
 
-// Update smiley face position based on character position and facing direction
-function updateSmileyPosition(smileyFace, character, facingDirection) {
-    // Position smiley face 0.6 units in front of the character in the facing direction
-    smileyFace.position.copy(character.position);
+// Update eyes position based on character position and facing direction
+function updateSmileyPosition(eyesGroup, character, facingDirection) {
+    // Position eyes directly on top of the character
+    eyesGroup.position.copy(character.position);
     
-    // Add a small Y offset to position it slightly higher
-    smileyFace.position.y += 0.15;
+    // Make eyes look in the direction the character is facing
+    const lookAtPos = eyesGroup.position.clone().add(facingDirection);
+    eyesGroup.lookAt(lookAtPos);
     
-    // Position it closer to the character (0.6 instead of 0.8)
-    smileyFace.position.add(facingDirection.clone().multiplyScalar(0.6));
-    
-    // Make smiley face look in the same direction as the character
-    smileyFace.lookAt(smileyFace.position.clone().add(facingDirection));
-    
-    // Tilt the smiley face upward for better visibility from the camera
-    // Apply a rotation to tilt it slightly upward (around the X-axis)
-    // Tilt the smiley face upward for better visibility from the camera
-    // Apply a rotation to tilt it slightly upward (around the X-axis)
-    smileyFace.rotation.x = Math.PI * 0.15;
-    
-    // Make smiley face look in the same direction as the character
-    // but preserve the X rotation we just set
-    const lookAtPos = smileyFace.position.clone().add(facingDirection);
-    const currentXRotation = smileyFace.rotation.x;
-    smileyFace.lookAt(lookAtPos);
-    smileyFace.rotation.x = currentXRotation;
+    // Adjust rotation to keep eyes level but looking in the right direction
+    eyesGroup.rotation.x = 0;
+    eyesGroup.rotation.z = 0;
 }
 
 // Update push arm position and rotation
