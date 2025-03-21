@@ -23,9 +23,8 @@ function applyPhysics(character, velocity, platform) {
     // Check if character is on the ground
     // Only set position when falling onto platform from above (velocity.y < 0)
     // AND the previous position was above the platform
-    if (character.position.y <= platform.position.y + 1 && 
+    if (character.position.y >= platform.position.y + 1 && 
         velocity.y <= 0 && 
-        previousY > platform.position.y + 1 &&
         isOnPlatform(character, platform)) {
         character.position.y = platform.position.y + 1; // platform height + half character height + half platform height
         velocity.y = 0;
