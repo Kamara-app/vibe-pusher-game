@@ -7,7 +7,7 @@ let gameActive = true;
 
 // Direction tracking
 let facingDirection = new THREE.Vector3(0, 0, -1); // Default facing forward (negative z)
-let smileyFace, pushArm;
+let smileyFace, pushArm, cooldownIndicator;
 
 // Enemy variables
 let enemies = [];
@@ -75,6 +75,7 @@ function initializeCharacter() {
     character = createCharacter(scene);
     smileyFace = createDirectionIndicator(scene);
     pushArm = createPushArm(scene);
+    cooldownIndicator = createCooldownIndicator(scene);
     
     // Position the smiley face in front of the character
     updateSmileyPosition(smileyFace, character, facingDirection);
@@ -132,6 +133,9 @@ function updateCharacter() {
     
     // Update push arm position
     updatePushArm(pushArm, character, facingDirection, isPushing);
+    
+    // Update cooldown indicator - make sure to pass camera for proper orientation
+    updateCooldownIndicator(cooldownIndicator, character, pushCooldown, lastPushTime, PUSH_COOLDOWN_TIME);
     
     // Update camera to follow character - adjusted to be more from above
     camera.position.x = character.position.x;

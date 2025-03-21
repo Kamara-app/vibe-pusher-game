@@ -48,15 +48,61 @@ function createDirectionIndicator(scene) {
     return eyesGroup;
 }
 
-// Create push arm for attack animation
+// Create push arm for attack animation (semi-sphere)
 function createPushArm(scene) {
-    const armGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.8);
-    const armMaterial = new THREE.MeshStandardMaterial({ color: 0x0000FF });
+    // Create a semi-sphere for the push effect
+    const armGeometry = new THREE.SphereGeometry(0.6, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+    const armMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x0088FF,
+        transparent: true,
+        opacity: 0.7 // Semi-transparent to allow visibility through the effect while maintaining visual clarity
+    });
     const pushArm = new THREE.Mesh(armGeometry, armMaterial);
     pushArm.visible = false; // Hide initially
     scene.add(pushArm);
     
     return pushArm;
+}
+
+// Create cooldown indicator
+function createCooldownIndicator(scene) {
+    // Make the indicator larger and more visible
+    const indicatorGeometry = new THREE.PlaneGeometry(1.0, 0.2); // Increased size
+    const indicatorMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xFF0000,
+        transparent: true,
+        opacity: 1.0 // Full opacity for better visibility
+    });
+    const cooldownIndicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+    
+    // Create background for the indicator
+    const bgGeometry = new THREE.PlaneGeometry(1.02, 0.22); // Slightly larger than the indicator
+    const bgMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x000000,
+        transparent: true,
+        opacity: 0.8 // Increased opacity for better visibility
+    });
+    const background = new THREE.Mesh(bgGeometry, bgMaterial);
+    
+    // Group the indicator and background
+    const indicatorGroup = new THREE.Group();
+    indicatorGroup.add(background);
+    indicatorGroup.add(cooldownIndicator);
+    
+    // Position the indicator slightly behind the background
+    cooldownIndicator.position.z = 0.01;
+    
+    // Make sure the indicator is visible by default (for debugging)
+    indicatorGroup.visible = true; 
+    
+    // Add the indicator to the scene
+    scene.add(indicatorGroup);
+    
+    return {
+        group: indicatorGroup,
+        indicator: cooldownIndicator,
+        background: background
+    };
 }
 
 // Update eyes position based on character position and facing direction
@@ -79,13 +125,62 @@ function updatePushArm(pushArm, character, facingDirection, isPushing) {
         pushArm.visible = true;
         pushArm.position.copy(character.position);
         
-        // Position the arm in front of the character
-        pushArm.position.add(facingDirection.clone().multiplyScalar(0.4));
+        // Position the semi-sphere in front of the character (further out to ensure full visibility)
+        pushArm.position.add(facingDirection.clone().multiplyScalar(0.8));
         
-        // Rotate the arm to align with the facing direction
-        pushArm.rotation.y = Math.atan2(facingDirection.x, facingDirection.z);
+        // Reset all rotations first to avoid compounding rotation issues
+        pushArm.rotation.set(0, 0, 0);
+        
+        // Properly orient the semi-sphere based on facing direction
+        // The semi-sphere's flat side should face outward from the character
+        
+        // First, align the push arm with the character's facing direction
+        const lookAtPos = pushArm.position.clone().add(facingDirection);
+        const tempMatrix = new THREE.Matrix4();
+        tempMatrix.lookAt(pushArm.position, lookAtPos, new THREE.Vector3(0, 1, 0));
+        pushArm.quaternion.setFromRotationMatrix(tempMatrix);
+        
+        // Then rotate it 90 degrees so the flat side faces outward
+        // We need to rotate around the local X axis
+        pushArm.rotateX(-Math.PI / 2);
     } else {
         pushArm.visible = false;
+    }
+}
+
+// Update cooldown indicator
+function updateCooldownIndicator(cooldownIndicator, character, isPushCooldown, lastPushTime, cooldownTime) {
+    if (isPushCooldown) {
+        // Show the indicator
+        cooldownIndicator.group.visible = true;
+        
+        // Position above the character (increased height for better visibility)
+        cooldownIndicator.group.position.copy(character.position);
+        cooldownIndicator.group.position.y += 2.0; // Increased from 1.5 to 2.0 for better visibility
+        
+        // Make sure the indicator always faces the camera
+        cooldownIndicator.group.rotation.set(0, 0, 0); // Reset rotation
+        cooldownIndicator.group.lookAt(camera.position); // Make it face the camera
+        
+        // Make the indicator more visible
+        cooldownIndicator.indicator.material.opacity = 1.0; // Full opacity
+        cooldownIndicator.background.material.opacity = 0.8; // Increased background opacity
+        
+        // Calculate remaining cooldown percentage
+        const elapsed = Date.now() - lastPushTime;
+        const remainingPercentage = 1 - (elapsed / cooldownTime);
+        
+        // Update the indicator width based on remaining cooldown
+        cooldownIndicator.indicator.scale.x = Math.max(0, remainingPercentage);
+        
+        // Adjust position to ensure it shrinks from right to left
+        cooldownIndicator.indicator.position.x = (1 - cooldownIndicator.indicator.scale.x) * -0.4;
+        
+        // Debug - log to console when cooldown is active
+        console.log("Cooldown active: " + remainingPercentage.toFixed(2));
+    } else {
+        // Hide the indicator when cooldown is complete
+        cooldownIndicator.group.visible = false;
     }
 }
 
