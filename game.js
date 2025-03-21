@@ -125,7 +125,7 @@ function updateCharacter() {
     }
     
     // Update character position based on controls
-    updateCharacterPosition(character, speed);
+    updateCharacterPosition(character, speed, velocity, platform);
     
     // Update smiley face position
     updateSmileyPosition(smileyFace, character, facingDirection);
@@ -146,7 +146,7 @@ function animate() {
     
     if (gameActive) {
         updateCharacter();
-        updateEnemies(enemies, enemySpeed);
+        enemies = updateEnemies(enemies, enemySpeed, platform);
         checkCollisions(character, enemies, velocity);
     }
     

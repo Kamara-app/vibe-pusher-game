@@ -25,6 +25,38 @@ function applyPhysics(character, velocity, platform) {
     return true; // Game continues
 }
 
+// Apply physics to enemy
+function applyEnemyPhysics(enemy, platform) {
+    // If enemy is not on platform, apply gravity
+    if (!isOnPlatform(enemy, platform)) {
+        // If enemy doesn't have velocity yet, initialize it
+        if (!enemy.userData.velocity) {
+            enemy.userData.velocity = { y: 0 };
+        }
+        
+        // Apply gravity
+        enemy.userData.velocity.y -= GRAVITY;
+        enemy.position.y += enemy.userData.velocity.y * 0.1;
+        
+        // Mark enemy as falling
+        enemy.userData.isFalling = true;
+    } else if (enemy.position.y <= platform.position.y + enemy.userData.size + 0.5) {
+        // Enemy is on platform and at or below the correct height
+        enemy.position.y = platform.position.y + enemy.userData.size + 0.5;
+        if (enemy.userData.velocity) {
+            enemy.userData.velocity.y = 0;
+        }
+        enemy.userData.isFalling = false;
+    }
+    
+    // Check if enemy fell too far (remove from game)
+    if (enemy.position.y < platform.position.y - 12) {
+        return false; // Enemy should be removed
+    }
+    
+    return true; // Enemy stays in game
+}
+
 // Check if character is above the platform
 function isOnPlatform(character, platform) {
     return (
@@ -89,4 +121,9 @@ function pushAttack(character, enemies, facingDirection) {
             enemy.userData.direction.copy(facingDirection);
         }
     }
+}
+
+// Check if player is falling
+function isPlayerFalling(character, velocity, platform) {
+    return character.position.y > platform.position.y + 1.1 && velocity.y < 0;
 }

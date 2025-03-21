@@ -111,7 +111,9 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
                 Math.random() * 2 - 1
             ).normalize(),
             nextDirectionChange: Math.random() * 2000 + 1000, // 1-3 seconds
-            lastDirectionChange: Date.now()
+            lastDirectionChange: Date.now(),
+            isFalling: false,
+            velocity: { y: 0 }
         };
         
         scene.add(enemy);
@@ -122,11 +124,24 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
 }
 
 // Update enemy positions
-function updateEnemies(enemies, enemySpeed) {
+function updateEnemies(enemies, enemySpeed, platform) {
     const now = Date.now();
+    const enemiesToRemove = [];
     
     for (let i = 0; i < enemies.length; i++) {
         const enemy = enemies[i];
+        
+        // Apply physics to enemy
+        const enemyStaysInGame = applyEnemyPhysics(enemy, platform);
+        if (!enemyStaysInGame) {
+            enemiesToRemove.push(i);
+            continue;
+        }
+        
+        // Skip movement logic if enemy is falling
+        if (enemy.userData.isFalling) {
+            continue;
+        }
         
         // Check if it's time to change direction
         if (now - enemy.userData.lastDirectionChange > enemy.userData.nextDirectionChange) {
@@ -144,21 +159,33 @@ function updateEnemies(enemies, enemySpeed) {
         enemy.position.x += enemy.userData.direction.x * enemySpeed;
         enemy.position.z += enemy.userData.direction.z * enemySpeed;
         
-        // Keep enemy on platform
-        if (enemy.position.x < -9) {
-            enemy.position.x = -9;
-            enemy.userData.direction.x *= -1;
-        } else if (enemy.position.x > 9) {
-            enemy.position.x = 9;
-            enemy.userData.direction.x *= -1;
-        }
-        
-        if (enemy.position.z < -9) {
-            enemy.position.z = -9;
-            enemy.userData.direction.z *= -1;
-        } else if (enemy.position.z > 9) {
-            enemy.position.z = 9;
-            enemy.userData.direction.z *= -1;
+        // Keep enemy on platform - only if they're still on the platform
+        if (isOnPlatform(enemy, platform)) {
+            if (enemy.position.x < -9) {
+                enemy.position.x = -9;
+                enemy.userData.direction.x *= -1;
+            } else if (enemy.position.x > 9) {
+                enemy.position.x = 9;
+                enemy.userData.direction.x *= -1;
+            }
+            
+            if (enemy.position.z < -9) {
+                enemy.position.z = -9;
+                enemy.userData.direction.z *= -1;
+            } else if (enemy.position.z > 9) {
+                enemy.position.z = 9;
+                enemy.userData.direction.z *= -1;
+            }
         }
     }
+    
+    // Remove enemies that fell too far
+    for (let i = enemiesToRemove.length - 1; i >= 0; i--) {
+        const index = enemiesToRemove[i];
+        const enemy = enemies[index];
+        enemy.parent.remove(enemy); // Remove from scene
+        enemies.splice(index, 1); // Remove from array
+    }
+    
+    return enemies;
 }

@@ -103,7 +103,15 @@ function onWindowResize() {
 }
 
 // Update character position based on controls
-function updateCharacterPosition(character, speed) {
+function updateCharacterPosition(character, speed, velocity, platform) {
+    // Check if player is falling
+    const falling = isPlayerFalling(character, velocity, platform);
+    
+    // If player is falling, don't allow horizontal movement
+    if (falling) {
+        return;
+    }
+    
     // Move character based on controls
     if (moveForward) {
         character.position.z -= speed;
@@ -124,4 +132,10 @@ function updateCharacterPosition(character, speed) {
         character.position.x += speed;
         facingDirection.set(1, 0, 0);
     }
+    
+    // Keep player on platform
+    if (character.position.x < -9.5) character.position.x = -9.5;
+    if (character.position.x > 9.5) character.position.x = 9.5;
+    if (character.position.z < -9.5) character.position.z = -9.5;
+    if (character.position.z > 9.5) character.position.z = 9.5;
 }
