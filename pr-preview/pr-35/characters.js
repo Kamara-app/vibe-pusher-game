@@ -121,36 +121,42 @@ function updatePushArm(pushArm, character, facingDirection, isPushing) {
         pushArm.visible = true;
         pushArm.position.copy(character.position);
         
-        // Position the semi-sphere in front of the character (slightly further out to ensure visibility)
-        pushArm.position.add(facingDirection.clone().multiplyScalar(0.6));
+        // Position the semi-sphere in front of the character (further out to ensure full visibility)
+        pushArm.position.add(facingDirection.clone().multiplyScalar(0.8));
         
         // Reset all rotations first to avoid compounding rotation issues
         pushArm.rotation.set(0, 0, 0);
         
-        // Rotate the semi-sphere to align with the facing direction
-        pushArm.rotation.y = Math.atan2(facingDirection.x, facingDirection.z);
+        // Use a simpler, more consistent approach for all directions
+        // First, point the semi-sphere in the right direction
+        const targetPosition = pushArm.position.clone().add(facingDirection);
         
-        // Calculate the angle for proper orientation
-        const angle = Math.atan2(Math.sqrt(facingDirection.x * facingDirection.x + facingDirection.z * facingDirection.z), facingDirection.y);
+        // Create a temporary vector for calculations
+        const tempVector = new THREE.Vector3();
         
-        // Rotate the semi-sphere so the flat part faces outward
-        if (Math.abs(facingDirection.z) > Math.abs(facingDirection.x)) {
-            // Primarily facing along Z axis
-            if (facingDirection.z < 0) {
-                pushArm.rotation.x = -Math.PI / 2;
+        // Determine the primary axis of movement
+        if (Math.abs(facingDirection.x) > Math.abs(facingDirection.z)) {
+            // Moving primarily along X axis
+            if (facingDirection.x > 0) {
+                // Moving right
+                pushArm.rotation.y = -Math.PI / 2;
             } else {
-                pushArm.rotation.x = Math.PI / 2;
+                // Moving left
+                pushArm.rotation.y = Math.PI / 2;
             }
         } else {
-            // Primarily facing along X axis
-            if (facingDirection.x < 0) {
-                pushArm.rotation.x = 0;
-                pushArm.rotation.z = -Math.PI / 2;
+            // Moving primarily along Z axis
+            if (facingDirection.z > 0) {
+                // Moving backward
+                pushArm.rotation.y = Math.PI;
             } else {
-                pushArm.rotation.x = 0;
-                pushArm.rotation.z = Math.PI / 2;
+                // Moving forward
+                pushArm.rotation.y = 0;
             }
         }
+        
+        // Rotate the semi-sphere so the flat part faces outward
+        pushArm.rotation.x = Math.PI / 2;
     } else {
         pushArm.visible = false;
     }
