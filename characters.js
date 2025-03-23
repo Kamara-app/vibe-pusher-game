@@ -185,12 +185,15 @@ function updateCooldownIndicator(cooldownIndicator, character, isPushCooldown, l
 }
 
 // Create enemies
-function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
+function createEnemies(scene, platform, enemyCount, minSize, maxSize, enemyColor) {
     const enemies = [];
     
     // Create new enemies
     for (let i = 0; i < enemyCount; i++) {
-        const enemyGeometry = new THREE.SphereGeometry(enemySize, 32, 32);
+        // Generate random size between minSize and maxSize
+        const size = minSize + Math.random() * (maxSize - minSize);
+        
+        const enemyGeometry = new THREE.SphereGeometry(size, 32, 32);
         const enemyMaterial = new THREE.MeshStandardMaterial({ color: enemyColor });
         const enemy = new THREE.Mesh(enemyGeometry, enemyMaterial);
         
@@ -198,12 +201,12 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
         const x = Math.random() * 16 - 8; // Range: -8 to 8
         const z = Math.random() * 16 - 8; // Range: -8 to 8
         
-        // Position enemy exactly at platform height + enemy size to ensure it's on the platform
-        enemy.position.set(x, platform.position.y + PLATFORM_HEIGHT, z);
+        // Position enemy exactly at platform height + enemy radius to ensure it's on the platform
+        enemy.position.set(x, platform.position.y + 0.5 + size, z);
         
         // Store enemy properties in userData for better organization
         enemy.userData = {
-            size: enemySize,
+            size: size,
             direction: new THREE.Vector3(
                 Math.random() * 2 - 1,
                 0,
@@ -214,7 +217,8 @@ function createEnemies(scene, platform, enemyCount, enemySize, enemyColor) {
             isFalling: false,
             velocity: { y: 0 },
             pushVelocity: new THREE.Vector3(0, 0, 0), // Initialize push velocity
-            isOnPlatform: true // Initialize as being on the platform
+            isOnPlatform: true, // Initialize as being on the platform
+            speedFactor: 1 - ((size - minSize) / (maxSize - minSize) * 0.5) // Larger balls move slower (50% speed reduction at max size)
         };
         
         scene.add(enemy);
@@ -296,9 +300,10 @@ function updateEnemies(enemies, enemySpeed, platform) {
         
         // Only apply normal movement if not being pushed
         if (!movementFromPush) {
-            // Move enemy with normal movement
-            enemy.position.x += enemy.userData.direction.x * enemySpeed;
-            enemy.position.z += enemy.userData.direction.z * enemySpeed;
+            // Move enemy with normal movement - apply speedFactor based on size
+            const adjustedSpeed = enemySpeed * enemy.userData.speedFactor;
+            enemy.position.x += enemy.userData.direction.x * adjustedSpeed;
+            enemy.position.z += enemy.userData.direction.z * adjustedSpeed;
         }
         
         // Keep enemy on platform - only if they're still on the platform and not being pushed

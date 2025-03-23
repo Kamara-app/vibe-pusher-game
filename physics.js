@@ -131,17 +131,18 @@ function checkCollisions(character, enemies, velocity) {
         const enemy = enemies[i];
         const distance = character.position.distanceTo(enemy.position);
         
-        // If collision detected
+        // If collision detected - use the actual enemy size for accurate collision
         if (distance < playerRadius + enemy.userData.size) {
-            // Push player away from enemy
+            // Push player away from enemy - larger enemies push harder
             const pushDirection = new THREE.Vector3()
                 .subVectors(character.position, enemy.position)
                 .normalize();
             
-            character.position.x += pushDirection.x * 0.2;
-            character.position.z += pushDirection.z * 0.2;
+            // Push strength proportional to enemy size
+            const pushStrength = 0.15 + (enemy.userData.size / enemyMaxSize) * 0.1;
             
-            // Removed the bounce effect (velocity.y = 1)
+            character.position.x += pushDirection.x * pushStrength;
+            character.position.z += pushDirection.z * pushStrength;
         }
     }
 }
@@ -173,8 +174,12 @@ function pushAttack(character, enemies, facingDirection) {
                 enemy.userData.pushVelocity = new THREE.Vector3();
             }
             
+            // Calculate push force based on enemy size - smaller enemies get pushed farther
+            const sizeFactor = 1 - ((enemy.userData.size - enemyMinSize) / (enemyMaxSize - enemyMinSize)); // Normalize size to a factor
+            const adjustedPushForce = PUSH_FORCE * (0.7 + sizeFactor * 0.3); // Between 70-100% of push force
+            
             // Set the push velocity in the direction of the push
-            enemy.userData.pushVelocity.copy(facingDirection).multiplyScalar(PUSH_FORCE);
+            enemy.userData.pushVelocity.copy(facingDirection).multiplyScalar(adjustedPushForce);
             
             // Set the push state and start time
             enemy.userData.isPushed = true;
