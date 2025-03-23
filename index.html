@@ -86,6 +86,72 @@
         };
     }
     
+    // Fallback implementation of applyEnemyPhysics if it's not loaded
+    if (typeof window.applyEnemyPhysics === 'undefined') {
+        window.applyEnemyPhysics = function(enemy, platform) {
+            // Skip if enemy is already marked as falling
+            if (enemy.userData.isFalling) {
+                // Apply gravity to falling enemies
+                enemy.position.y -= 0.1;
+                
+                // Apply push velocity if hit by bullet or push
+                if (enemy.userData.pushVelocity) {
+                    enemy.position.x += enemy.userData.pushVelocity.x;
+                    enemy.position.y += enemy.userData.pushVelocity.y;
+                    enemy.position.z += enemy.userData.pushVelocity.z;
+                    
+                    // Reduce push velocity over time (friction)
+                    enemy.userData.pushVelocity.multiplyScalar(0.95);
+                }
+                
+                // Remove enemy if it falls below a certain threshold
+                if (enemy.position.y < -10) {
+                    return false; // Remove enemy
+                }
+                
+                return true; // Keep enemy
+            }
+            
+            // Check if enemy is off the platform
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(enemy.position.x, 2) + 
+                Math.pow(enemy.position.z, 2)
+            );
+            
+            if (distanceFromCenter > platform.userData.radius) {
+                enemy.userData.isFalling = true;
+                return true;
+            }
+            
+            // Keep enemy on platform height
+            enemy.position.y = platform.position.y + enemy.userData.size;
+            
+            return true;
+        };
+    }
+    
+    // Fallback implementation of isPlayerFalling if it's not loaded
+    if (typeof window.isPlayerFalling === 'undefined') {
+        window.isPlayerFalling = function(character, velocity, platform) {
+            // If character is moving upward or at platform level, not falling
+            if (velocity.y >= 0 || character.position.y <= platform.position.y + 1.01) {
+                return false;
+            }
+            
+            // Check if character is off the platform
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(character.position.x, 2) + 
+                Math.pow(character.position.z, 2)
+            );
+            
+            if (distanceFromCenter > platform.userData.radius) {
+                return true; // Character is falling off the platform
+            }
+            
+            return false; // Not falling
+        };
+    }
+    
     // Global error handler for animation errors
     window.addEventListener('error', function(event) {
         console.error('Global error caught:', event.error);
