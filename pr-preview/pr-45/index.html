@@ -59,6 +59,33 @@
     // Define PLATFORM_RADIUS globally to avoid reference errors
     const PLATFORM_RADIUS = 10;
     
+    // Fallback implementation of applyPhysics if it's not loaded
+    if (typeof window.applyPhysics === 'undefined') {
+        window.applyPhysics = function(character, velocity, platform) {
+            // Simple gravity
+            velocity.y -= 0.01;
+            character.position.y += velocity.y;
+            
+            // Simple platform collision
+            if (character.position.y < platform.position.y + 1) {
+                character.position.y = platform.position.y + 1;
+                velocity.y = 0;
+            }
+            
+            // Check if character is on platform
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(character.position.x, 2) + 
+                Math.pow(character.position.z, 2)
+            );
+            
+            if (distanceFromCenter > platform.userData.radius) {
+                return false; // Character fell off
+            }
+            
+            return true; // Character is still on platform
+        };
+    }
+    
     // Global error handler for animation errors
     window.addEventListener('error', function(event) {
         console.error('Global error caught:', event.error);
