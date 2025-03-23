@@ -10,11 +10,172 @@ let pushCooldown = false;
 let lastPushTime = 0;
 const PUSH_COOLDOWN_TIME = 500; // 500ms cooldown
 
+// Mobile control states
+let isTouchDevice = false;
+let joystickActive = false;
+let joystickVector = { x: 0, y: 0 };
+
 // Initialize controls
 function initControls() {
     document.addEventListener('keydown', onKeyDown, false);
     document.addEventListener('keyup', onKeyUp, false);
     window.addEventListener('resize', onWindowResize, false);
+    
+    // Check if device supports touch events
+    isTouchDevice = ('ontouchstart' in window) || 
+                    (navigator.maxTouchPoints > 0) || 
+                    (navigator.msMaxTouchPoints > 0);
+    
+    // Initialize mobile controls if on a touch device
+    if (isTouchDevice) {
+        initMobileControls();
+    }
+}
+
+// Initialize mobile controls
+function initMobileControls() {
+    // Show mobile controls
+    const mobileControls = document.getElementById('mobile-controls');
+    if (mobileControls) {
+        mobileControls.style.display = 'block';
+    }
+    
+    // Joystick setup
+    const joystickContainer = document.getElementById('joystick-container');
+    const joystick = document.getElementById('joystick');
+    
+    if (joystickContainer && joystick) {
+        // Joystick touch start
+        joystickContainer.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            joystickActive = true;
+            updateJoystickPosition(e);
+        });
+        
+        // Joystick touch move
+        joystickContainer.addEventListener('touchmove', function(e) {
+            e.preventDefault();
+            if (joystickActive) {
+                updateJoystickPosition(e);
+            }
+        });
+        
+        // Joystick touch end
+        joystickContainer.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            joystickActive = false;
+            resetJoystick();
+        });
+        
+        // Joystick touch cancel
+        joystickContainer.addEventListener('touchcancel', function(e) {
+            e.preventDefault();
+            joystickActive = false;
+            resetJoystick();
+        });
+    }
+    
+    // Push button setup
+    const pushButton = document.getElementById('push-button');
+    
+    if (pushButton) {
+        // Push button touch start
+        pushButton.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            if (!pushCooldown) {
+                isPushing = true;
+                pushCooldown = true;
+                lastPushTime = Date.now();
+                
+                // Add cooldown class
+                pushButton.classList.add('cooldown');
+                
+                // Perform the push attack
+                pushAttack(character, enemies, facingDirection);
+                
+                // Reset push state after a short delay
+                setTimeout(() => {
+                    isPushing = false;
+                }, 500);
+                
+                // Reset cooldown after the specified time
+                setTimeout(() => {
+                    pushCooldown = false;
+                    pushButton.classList.remove('cooldown');
+                }, PUSH_COOLDOWN_TIME);
+            }
+        });
+    }
+}
+
+// Update joystick position and movement vector
+function updateJoystickPosition(e) {
+    if (!gameActive) return;
+    
+    const joystickContainer = document.getElementById('joystick-container');
+    const joystick = document.getElementById('joystick');
+    
+    if (!joystickContainer || !joystick) return;
+    
+    const containerRect = joystickContainer.getBoundingClientRect();
+    const containerCenterX = containerRect.left + containerRect.width / 2;
+    const containerCenterY = containerRect.top + containerRect.height / 2;
+    
+    // Get touch position
+    const touch = e.touches[0];
+    const touchX = touch.clientX;
+    const touchY = touch.clientY;
+    
+    // Calculate distance from center
+    let deltaX = touchX - containerCenterX;
+    let deltaY = touchY - containerCenterY;
+    
+    // Calculate distance
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Limit joystick movement to container radius
+    const maxDistance = containerRect.width / 2;
+    if (distance > maxDistance) {
+        const ratio = maxDistance / distance;
+        deltaX *= ratio;
+        deltaY *= ratio;
+    }
+    
+    // Update joystick position
+    joystick.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+    
+    // Update joystick vector (normalized)
+    const normalizedX = deltaX / maxDistance;
+    const normalizedY = deltaY / maxDistance;
+    
+    // Update movement based on joystick position
+    moveLeft = normalizedX < -0.2;
+    moveRight = normalizedX > 0.2;
+    moveForward = normalizedY < -0.2;
+    moveBackward = normalizedY > 0.2;
+    
+    // Store joystick vector for potential analog movement
+    joystickVector.x = normalizedX;
+    joystickVector.y = normalizedY;
+}
+
+// Reset joystick position and movement
+function resetJoystick() {
+    const joystick = document.getElementById('joystick');
+    
+    if (joystick) {
+        joystick.style.transform = 'translate(-50%, -50%)';
+    }
+    
+    // Reset movement states
+    moveLeft = false;
+    moveRight = false;
+    moveForward = false;
+    moveBackward = false;
+    
+    // Reset joystick vector
+    joystickVector.x = 0;
+    joystickVector.y = 0;
 }
 
 // Handle key down events
@@ -49,6 +210,12 @@ function onKeyDown(event) {
                 pushCooldown = true;
                 lastPushTime = Date.now();
                 
+                // Update push button visual if it exists
+                const pushButton = document.getElementById('push-button');
+                if (pushButton) {
+                    pushButton.classList.add('cooldown');
+                }
+                
                 // Perform the push attack
                 pushAttack(character, enemies, facingDirection);
                 
@@ -60,6 +227,11 @@ function onKeyDown(event) {
                 // Reset cooldown after the specified time
                 setTimeout(() => {
                     pushCooldown = false;
+                    
+                    // Update push button visual if it exists
+                    if (pushButton) {
+                        pushButton.classList.remove('cooldown');
+                    }
                 }, PUSH_COOLDOWN_TIME);
             }
             break;
@@ -99,6 +271,15 @@ function calculateMovementDirection() {
     if (moveBackward) direction.z += 1;
     if (moveLeft) direction.x -= 1;
     if (moveRight) direction.x += 1;
+    
+    // For touch devices, use joystick vector for more precise control if active
+    if (isTouchDevice && joystickActive) {
+        // Only override if joystick is being used (vector is non-zero)
+        if (Math.abs(joystickVector.x) > 0.1 || Math.abs(joystickVector.y) > 0.1) {
+            direction.x = joystickVector.x;
+            direction.z = joystickVector.y;
+        }
+    }
     
     // Normalize the direction vector for consistent speed in all directions
     if (direction.length() > 0) {
