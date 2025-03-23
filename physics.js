@@ -7,8 +7,8 @@ const PUSH_FORCE = 2; // How strong the push is (reduced from 3)
 const PUSH_DURATION = 500; // How long the push effect lasts (in ms)
 
 // Platform boundary constants
-const PLATFORM_HALF_WIDTH = 10; // Half width of the platform
-const PLAYER_BOUNDARY = 9.5; // Player movement boundary
+const PLATFORM_RADIUS = 10; // Radius of the circular platform
+const PLAYER_BOUNDARY = 9.5; // Player movement boundary (slightly less than radius)
 const ENEMY_BOUNDARY = 9; // Enemy movement boundary
 const PLATFORM_HEIGHT = 1; // Height of platform surface
 
@@ -31,6 +31,23 @@ function applyPhysics(character, velocity, platform) {
         isOnPlatform(character, platform)) {
         character.position.y = platform.position.y + PLATFORM_HEIGHT; // platform height + half character height
         velocity.y = 0;
+    }
+    
+    // Enforce circular platform boundary
+    const distanceFromCenter = Math.sqrt(
+        Math.pow(character.position.x - platform.position.x, 2) + 
+        Math.pow(character.position.z - platform.position.z, 2)
+    );
+    
+    if (distanceFromCenter > PLAYER_BOUNDARY) {
+        // Push character back inside the platform
+        const angle = Math.atan2(
+            character.position.z - platform.position.z,
+            character.position.x - platform.position.x
+        );
+        
+        character.position.x = platform.position.x + Math.cos(angle) * PLAYER_BOUNDARY;
+        character.position.z = platform.position.z + Math.sin(angle) * PLAYER_BOUNDARY;
     }
     
     // Check if character fell too far
@@ -89,10 +106,31 @@ function applyEnemyPhysics(enemy, platform) {
             enemy.position.x += pushForceThisFrame.x;
             enemy.position.z += pushForceThisFrame.z;
             
-            // No platform boundary restrictions for enemies
+            // Check for obstacle collisions
+            checkEnemyObstacleCollisions(enemy, obstacles);
         } else {
             // Push effect has ended
             enemy.userData.isPushed = false;
+        }
+    }
+    
+    // Enforce circular platform boundary for enemies
+    const distanceFromCenter = Math.sqrt(
+        Math.pow(enemy.position.x - platform.position.x, 2) + 
+        Math.pow(enemy.position.z - platform.position.z, 2)
+    );
+    
+    if (distanceFromCenter > ENEMY_BOUNDARY) {
+        // If enemy is pushed off the platform, let it fall
+        if (!enemy.userData.isPushed) {
+            // Otherwise, keep it on the platform
+            const angle = Math.atan2(
+                enemy.position.z - platform.position.z,
+                enemy.position.x - platform.position.x
+            );
+            
+            enemy.position.x = platform.position.x + Math.cos(angle) * ENEMY_BOUNDARY;
+            enemy.position.z = platform.position.z + Math.sin(angle) * ENEMY_BOUNDARY;
         }
     }
     
@@ -104,15 +142,72 @@ function applyEnemyPhysics(enemy, platform) {
     return true; // Enemy stays in game
 }
 
+// Check for collisions between enemies and obstacles
+function checkEnemyObstacleCollisions(enemy, obstacles) {
+    const enemyRadius = enemy.userData.size || 0.5;
+    
+    for (let i = 0; i < obstacles.length; i++) {
+        const obstacle = obstacles[i];
+        let collision = false;
+        
+        if (obstacle.userData.type === 'box') {
+            // Box collision detection
+            const halfWidth = obstacle.userData.width / 2;
+            const halfDepth = obstacle.userData.depth / 2;
+            
+            // Calculate closest point on box to enemy
+            const closestX = Math.max(obstacle.position.x - halfWidth, 
+                            Math.min(enemy.position.x, obstacle.position.x + halfWidth));
+            const closestZ = Math.max(obstacle.position.z - halfDepth, 
+                            Math.min(enemy.position.z, obstacle.position.z + halfDepth));
+            
+            // Calculate distance from closest point to enemy
+            const distance = Math.sqrt(
+                Math.pow(enemy.position.x - closestX, 2) + 
+                Math.pow(enemy.position.z - closestZ, 2)
+            );
+            
+            collision = distance < enemyRadius;
+        } else if (obstacle.userData.type === 'cylinder') {
+            // Cylinder collision detection
+            const distance = Math.sqrt(
+                Math.pow(enemy.position.x - obstacle.position.x, 2) + 
+                Math.pow(enemy.position.z - obstacle.position.z, 2)
+            );
+            
+            collision = distance < (enemyRadius + obstacle.userData.radius);
+        }
+        
+        if (collision) {
+            // Push enemy away from obstacle
+            const pushDirection = new THREE.Vector3()
+                .subVectors(enemy.position, obstacle.position)
+                .normalize();
+            
+            enemy.position.x += pushDirection.x * 0.2;
+            enemy.position.z += pushDirection.z * 0.2;
+            
+            // Slightly redirect the enemy's push velocity if being pushed
+            if (enemy.userData.isPushed && enemy.userData.pushVelocity) {
+                // Reflect the push velocity based on the obstacle normal
+                const dot = enemy.userData.pushVelocity.dot(pushDirection);
+                enemy.userData.pushVelocity.sub(
+                    pushDirection.multiplyScalar(2 * dot)
+                );
+            }
+        }
+    }
+}
+
 // Check if character is on the platform
 function isOnPlatform(character, platform) {
-    // Check horizontal position (x-z coordinates)
-    const isAbovePlatform = (
-        character.position.x >= -PLATFORM_HALF_WIDTH && 
-        character.position.x <= PLATFORM_HALF_WIDTH && 
-        character.position.z >= -PLATFORM_HALF_WIDTH && 
-        character.position.z <= PLATFORM_HALF_WIDTH
+    // Check horizontal position (x-z coordinates) for circular platform
+    const distanceFromCenter = Math.sqrt(
+        Math.pow(character.position.x - platform.position.x, 2) + 
+        Math.pow(character.position.z - platform.position.z, 2)
     );
+    
+    const isAbovePlatform = distanceFromCenter <= PLATFORM_RADIUS;
     
     // Check vertical position (y coordinate)
     // Character is considered on platform if they're at or very slightly above platform height
@@ -187,6 +282,54 @@ function pushAttack(character, enemies, facingDirection) {
             
             // Also change the enemy's direction
             enemy.userData.direction.copy(facingDirection);
+        }
+    }
+}
+
+// Check for collisions with obstacles
+function checkObstacleCollisions(character, obstacles) {
+    const playerRadius = 0.5;
+    
+    for (let i = 0; i < obstacles.length; i++) {
+        const obstacle = obstacles[i];
+        let collision = false;
+        
+        if (obstacle.userData.type === 'box') {
+            // Box collision detection
+            const halfWidth = obstacle.userData.width / 2;
+            const halfDepth = obstacle.userData.depth / 2;
+            
+            // Calculate closest point on box to character
+            const closestX = Math.max(obstacle.position.x - halfWidth, 
+                            Math.min(character.position.x, obstacle.position.x + halfWidth));
+            const closestZ = Math.max(obstacle.position.z - halfDepth, 
+                            Math.min(character.position.z, obstacle.position.z + halfDepth));
+            
+            // Calculate distance from closest point to character
+            const distance = Math.sqrt(
+                Math.pow(character.position.x - closestX, 2) + 
+                Math.pow(character.position.z - closestZ, 2)
+            );
+            
+            collision = distance < playerRadius;
+        } else if (obstacle.userData.type === 'cylinder') {
+            // Cylinder collision detection
+            const distance = Math.sqrt(
+                Math.pow(character.position.x - obstacle.position.x, 2) + 
+                Math.pow(character.position.z - obstacle.position.z, 2)
+            );
+            
+            collision = distance < (playerRadius + obstacle.userData.radius);
+        }
+        
+        if (collision) {
+            // Push character away from obstacle
+            const pushDirection = new THREE.Vector3()
+                .subVectors(character.position, obstacle.position)
+                .normalize();
+            
+            character.position.x += pushDirection.x * 0.2;
+            character.position.z += pushDirection.z * 0.2;
         }
     }
 }
