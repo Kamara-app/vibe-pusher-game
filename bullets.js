@@ -39,6 +39,15 @@ function createBullet(scene, position, direction) {
     const trail = new THREE.Mesh(trailGeometry, trailMaterial);
     bullet.add(trail);
     
+    // Store references for cleanup
+    bullet.userData.geometry = bulletGeometry;
+    bullet.userData.material = bulletMaterial;
+    bullet.userData.trail = {
+        mesh: trail,
+        geometry: trailGeometry,
+        material: trailMaterial
+    };
+    
     // Position the trail behind the bullet
     trail.position.set(0, 0, -0.2);
     
@@ -93,21 +102,23 @@ function updateBullets(bullets, scene, enemies) {
                 killEnemy(enemy);
                 
                 // Create hit effect
-                createHitEffect(scene, bullet.position);
+                createHitEffect(scene, bullet.position.clone());
                 
                 break;
             }
         }
         
         // Check if bullet is off the platform
-        const distanceFromCenter = Math.sqrt(
-            Math.pow(bullet.position.x, 2) + 
-            Math.pow(bullet.position.z, 2)
-        );
-        
-        if (distanceFromCenter > PLATFORM_RADIUS) {
-            bullet.userData.isDead = true;
-            bulletsToRemove.push(i);
+        if (typeof PLATFORM_RADIUS !== 'undefined') {
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(bullet.position.x, 2) + 
+                Math.pow(bullet.position.z, 2)
+            );
+            
+            if (distanceFromCenter > PLATFORM_RADIUS) {
+                bullet.userData.isDead = true;
+                bulletsToRemove.push(i);
+            }
         }
     }
     
@@ -115,11 +126,40 @@ function updateBullets(bullets, scene, enemies) {
     for (let i = bulletsToRemove.length - 1; i >= 0; i--) {
         const index = bulletsToRemove[i];
         const bullet = bullets[index];
-        scene.remove(bullet);
+        
+        cleanupBullet(bullet, scene);
         bullets.splice(index, 1);
     }
     
     return bullets;
+}
+
+// Clean up bullet resources
+function cleanupBullet(bullet, scene) {
+    if (!bullet) return;
+    
+    // Remove trail first
+    if (bullet.userData.trail && bullet.userData.trail.mesh) {
+        bullet.remove(bullet.userData.trail.mesh);
+        
+        if (bullet.userData.trail.material) {
+            bullet.userData.trail.material.dispose();
+        }
+        if (bullet.userData.trail.geometry) {
+            bullet.userData.trail.geometry.dispose();
+        }
+    }
+    
+    // Dispose of bullet resources
+    if (bullet.userData.material) {
+        bullet.userData.material.dispose();
+    }
+    if (bullet.userData.geometry) {
+        bullet.userData.geometry.dispose();
+    }
+    
+    // Remove from scene
+    scene.remove(bullet);
 }
 
 // Create hit effect at the collision point
@@ -148,20 +188,38 @@ function createHitEffect(scene, position) {
             flash.material.opacity = 0.8 * (1 - elapsed / duration);
             animationFrameId = requestAnimationFrame(animateFlash);
         } else {
-            scene.remove(flash);
-            cancelAnimationFrame(animationFrameId);
-            
-            // Clean up materials to prevent memory leaks
+            // Clean up resources
             if (flash.material) {
                 flash.material.dispose();
             }
             if (flashGeometry) {
                 flashGeometry.dispose();
             }
+            
+            // Remove from scene
+            scene.remove(flash);
+            
+            // Cancel animation frame
+            cancelAnimationFrame(animationFrameId);
         }
     }
     
-    animateFlash();
+    // Start animation
+    animationFrameId = requestAnimationFrame(animateFlash);
+    
+    // Safety cleanup - if for some reason the animation doesn't complete
+    setTimeout(() => {
+        if (scene.children.includes(flash)) {
+            if (flash.material) {
+                flash.material.dispose();
+            }
+            if (flashGeometry) {
+                flashGeometry.dispose();
+            }
+            scene.remove(flash);
+            cancelAnimationFrame(animationFrameId);
+        }
+    }, duration * 2);
 }
 
 // Handle enemy "death" when hit by bullets
@@ -200,18 +258,20 @@ function createAimIndicator(scene) {
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0xFF0000 });
     
     // Horizontal line
-    const horizontalGeometry = new THREE.BufferGeometry().setFromPoints([
+    const horizontalPoints = [
         new THREE.Vector3(-0.2, 0, 0),
         new THREE.Vector3(0.2, 0, 0)
-    ]);
+    ];
+    const horizontalGeometry = new THREE.BufferGeometry().setFromPoints(horizontalPoints);
     const horizontalLine = new THREE.Line(horizontalGeometry, lineMaterial);
     aimGroup.add(horizontalLine);
     
     // Vertical line
-    const verticalGeometry = new THREE.BufferGeometry().setFromPoints([
+    const verticalPoints = [
         new THREE.Vector3(0, -0.2, 0),
         new THREE.Vector3(0, 0.2, 0)
-    ]);
+    ];
+    const verticalGeometry = new THREE.BufferGeometry().setFromPoints(verticalPoints);
     const verticalLine = new THREE.Line(verticalGeometry, lineMaterial);
     aimGroup.add(verticalLine);
     
@@ -238,17 +298,52 @@ function createAimIndicator(scene) {
     // Make aim indicator invisible initially
     aimGroup.visible = false;
     
+    // Add to scene
     scene.add(aimGroup);
+    
+    // Store references for cleanup
+    aimGroup.userData = {
+        materials: [lineMaterial],
+        geometries: [horizontalGeometry, verticalGeometry, circleGeometry]
+    };
+    
     return aimGroup;
 }
 
 // Update aim indicator position
 function updateAimIndicator(aimIndicator, position, normal) {
-    aimIndicator.position.copy(position);
+    if (!aimIndicator) return;
     
-    // Make the aim indicator face the camera
-    aimIndicator.lookAt(camera.position);
+    // Update position
+    aimIndicator.position.copy(position);
     
     // Offset slightly to avoid z-fighting with the ground
     aimIndicator.position.add(normal.clone().multiplyScalar(0.05));
+    
+    // Make the aim indicator face the camera
+    if (window.camera) {
+        aimIndicator.lookAt(window.camera.position);
+    }
+}
+
+// Clean up aim indicator resources
+function cleanupAimIndicator(aimIndicator, scene) {
+    if (!aimIndicator) return;
+    
+    // Dispose of materials
+    if (aimIndicator.userData && aimIndicator.userData.materials) {
+        aimIndicator.userData.materials.forEach(material => {
+            if (material) material.dispose();
+        });
+    }
+    
+    // Dispose of geometries
+    if (aimIndicator.userData && aimIndicator.userData.geometries) {
+        aimIndicator.userData.geometries.forEach(geometry => {
+            if (geometry) geometry.dispose();
+        });
+    }
+    
+    // Remove from scene
+    scene.remove(aimIndicator);
 }

@@ -25,45 +25,70 @@ let raycaster = new THREE.Raycaster();
 
 // Initialize the game
 function init() {
-    // Create scene
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB); // Sky blue background
-    
-    // Create camera - adjusted to be more from above
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 12, 8); // Changed from (0, 5, 10) to be higher and closer
-    camera.lookAt(0, 0, 0);
-    
-    // Create renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-    
-    // Add lights
-    const ambientLight = new THREE.AmbientLight(0x404040);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
-    
-    // Create platform
-    createPlatform();
-    
-    // Create character
-    initializeCharacter();
-    
-    // Create enemies
-    initializeEnemies();
-    
-    // Initialize controls
-    initControls();
-    
-    // Add reset button functionality
-    document.getElementById('resetButton').addEventListener('click', resetGame);
-    
-    // Start animation loop
-    animate();
+    try {
+        // Create scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+        
+        // Create camera - adjusted to be more from above
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 12, 8); // Changed from (0, 5, 10) to be higher and closer
+        camera.lookAt(0, 0, 0);
+        
+        // Make camera globally accessible for aim indicator
+        window.camera = camera;
+        
+        // Create renderer with error handling
+        try {
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+        } catch (renderError) {
+            console.error("WebGL renderer creation failed:", renderError);
+            const errorMessage = document.createElement('div');
+            errorMessage.style.color = 'red';
+            errorMessage.style.padding = '20px';
+            errorMessage.textContent = 'Error: Could not initialize WebGL. Please check if your browser supports WebGL.';
+            document.body.appendChild(errorMessage);
+            return;
+        }
+        
+        // Initialize raycaster
+        raycaster = new THREE.Raycaster();
+        
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        // Create platform
+        createPlatform();
+        
+        // Create character
+        initializeCharacter();
+        
+        // Create enemies
+        initializeEnemies();
+        
+        // Initialize controls
+        initControls();
+        
+        // Add reset button functionality
+        document.getElementById('resetButton').addEventListener('click', resetGame);
+        
+        // Start animation loop
+        animate();
+    } catch (error) {
+        console.error("Game initialization failed:", error);
+        const errorMessage = document.createElement('div');
+        errorMessage.style.color = 'red';
+        errorMessage.style.padding = '20px';
+        errorMessage.textContent = 'Error: Game initialization failed. Please refresh the page.';
+        document.body.appendChild(errorMessage);
+    }
 }
 
 // Create the circular platform with obstacles
@@ -172,28 +197,50 @@ function gameOver() {
 
 // Reset game function
 function resetGame() {
-    character.position.set(0, platform.position.y + 1, 0); // Updated to be on top of the elevated platform
-    velocity.set(0, 0, 0);
-    moveForward = false;
-    moveBackward = false;
-    moveLeft = false;
-    moveRight = false;
-    gameActive = true;
-    facingDirection.set(0, 0, -1); // Reset facing direction
-    isPushing = false;
-    pushCooldown = false;
-    isShooting = false;
-    shootCooldown = false;
-    document.getElementById('gameOver').style.display = 'none';
-    
-    // Clear bullets
-    for (let i = 0; i < bullets.length; i++) {
-        scene.remove(bullets[i]);
+    try {
+        // Reset character position and state
+        if (character && platform) {
+            character.position.set(0, platform.position.y + 1, 0);
+        }
+        
+        // Reset physics and controls
+        velocity.set(0, 0, 0);
+        moveForward = false;
+        moveBackward = false;
+        moveLeft = false;
+        moveRight = false;
+        gameActive = true;
+        facingDirection.set(0, 0, -1);
+        isPushing = false;
+        pushCooldown = false;
+        isShooting = false;
+        shootCooldown = false;
+        
+        // Hide game over screen
+        document.getElementById('gameOver').style.display = 'none';
+        
+        // Clean up bullets
+        for (let i = 0; i < bullets.length; i++) {
+            cleanupBullet(bullets[i], scene);
+        }
+        bullets = [];
+        
+        // Hide aim indicator
+        if (aimIndicator) {
+            aimIndicator.visible = false;
+        }
+        
+        // Recreate enemies
+        initializeEnemies();
+    } catch (error) {
+        console.error("Error resetting game:", error);
+        
+        // Fallback reset for critical elements
+        bullets = [];
+        if (aimIndicator) aimIndicator.visible = false;
+        document.getElementById('gameOver').style.display = 'none';
+        gameActive = true;
     }
-    bullets = [];
-    
-    // Recreate enemies
-    initializeEnemies();
 }
 
 // Update character state
@@ -223,19 +270,28 @@ function updateCharacter() {
     updateCooldownIndicator(cooldownIndicator, character, pushCooldown, lastPushTime, PUSH_COOLDOWN_TIME);
     
     // Update aim indicator
-    if (isAiming) {
-        // Cast a ray from the camera through the mouse position
-        raycaster.setFromCamera(mousePosition, camera);
-        
-        // Calculate the point where the ray intersects the platform plane
-        const platformPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -platform.position.y);
-        const targetPoint = new THREE.Vector3();
-        raycaster.ray.intersectPlane(platformPlane, targetPoint);
-        
-        // Update aim indicator position
-        aimIndicator.visible = true;
-        updateAimIndicator(aimIndicator, targetPoint, new THREE.Vector3(0, 1, 0));
-    } else {
+    if (isAiming && aimIndicator) {
+        try {
+            // Cast a ray from the camera through the mouse position
+            raycaster.setFromCamera(mousePosition, camera);
+            
+            // Calculate the point where the ray intersects the platform plane
+            const platformPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -platform.position.y);
+            const targetPoint = new THREE.Vector3();
+            
+            // Check if the ray intersects the platform plane
+            if (raycaster.ray.intersectPlane(platformPlane, targetPoint)) {
+                // Update aim indicator position
+                aimIndicator.visible = true;
+                updateAimIndicator(aimIndicator, targetPoint, new THREE.Vector3(0, 1, 0));
+            } else {
+                aimIndicator.visible = false;
+            }
+        } catch (error) {
+            console.error("Error updating aim indicator:", error);
+            aimIndicator.visible = false;
+        }
+    } else if (aimIndicator) {
         aimIndicator.visible = false;
     }
     
@@ -248,17 +304,43 @@ function updateCharacter() {
 
 // Animation loop
 function animate() {
-    requestAnimationFrame(animate);
-    
-    if (gameActive) {
-        updateCharacter();
-        enemies = updateEnemies(enemies, enemySpeed, platform);
-        bullets = updateBullets(bullets, scene, enemies);
-        checkCollisions(character, enemies, velocity);
-        checkObstacleCollisions(character, obstacles);
+    try {
+        window.animationFrameId = requestAnimationFrame(animate);
+        
+        if (gameActive) {
+            updateCharacter();
+            
+            // Update game elements with error handling
+            try { enemies = updateEnemies(enemies, enemySpeed, platform); } 
+            catch (e) { console.error("Error updating enemies:", e); }
+            
+            try { bullets = updateBullets(bullets, scene, enemies); } 
+            catch (e) { console.error("Error updating bullets:", e); }
+            
+            try { checkCollisions(character, enemies, velocity); } 
+            catch (e) { console.error("Error checking collisions:", e); }
+            
+            try { checkObstacleCollisions(character, obstacles); } 
+            catch (e) { console.error("Error checking obstacle collisions:", e); }
+        }
+        
+        // Render scene
+        if (renderer && scene && camera) {
+            renderer.render(scene, camera);
+        }
+    } catch (error) {
+        console.error("Animation loop error:", error);
+        
+        // Cancel current animation frame to prevent cascading errors
+        if (window.animationFrameId) {
+            cancelAnimationFrame(window.animationFrameId);
+        }
+        
+        // Try to restart animation after a short delay
+        setTimeout(() => {
+            window.animationFrameId = requestAnimationFrame(animate);
+        }, 1000);
     }
-    
-    renderer.render(scene, camera);
 }
 
 // Initialize the game when the page loads

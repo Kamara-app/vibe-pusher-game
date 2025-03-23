@@ -115,6 +115,9 @@ function onMouseMove(event) {
     
     // Set aiming flag
     isAiming = true;
+    
+    // Prevent default behavior to avoid text selection
+    event.preventDefault();
 }
 
 // Handle mouse down events
@@ -159,25 +162,52 @@ function onMouseUp(event) {
 
 // Calculate aim direction from mouse position
 function calculateAimDirection() {
-    // Create a raycaster
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(mousePosition, camera);
-    
-    // Calculate the point where the ray intersects the platform plane
-    const platformPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -platform.position.y);
-    const targetPoint = new THREE.Vector3();
-    raycaster.ray.intersectPlane(platformPlane, targetPoint);
-    
-    // Calculate direction from character to target point
-    const direction = new THREE.Vector3()
-        .subVectors(targetPoint, character.position)
-        .normalize();
-    
-    // Keep the direction horizontal (y = 0)
-    direction.y = 0;
-    direction.normalize();
-    
-    return direction;
+    try {
+        // Create a raycaster
+        const raycaster = new THREE.Raycaster();
+        
+        // Make sure camera exists
+        if (!camera) {
+            console.warn("Camera not initialized for raycaster");
+            return facingDirection.clone();
+        }
+        
+        // Set raycaster from camera and mouse position
+        raycaster.setFromCamera(mousePosition, camera);
+        
+        // Create a plane at the platform height
+        const platformHeight = platform ? platform.position.y : 2;
+        const platformPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -platformHeight);
+        const targetPoint = new THREE.Vector3();
+        
+        // Check if the ray intersects the platform plane
+        if (raycaster.ray.intersectPlane(platformPlane, targetPoint)) {
+            // Make sure character exists
+            if (!character || !character.position) {
+                console.warn("Character not initialized for aim direction");
+                return new THREE.Vector3(0, 0, -1);
+            }
+            
+            // Calculate direction from character to target point
+            const direction = new THREE.Vector3()
+                .subVectors(targetPoint, character.position);
+            
+            // Keep the direction horizontal (y = 0)
+            direction.y = 0;
+            
+            // Make sure to normalize again after setting y to 0
+            if (direction.length() > 0) {
+                direction.normalize();
+                return direction;
+            }
+        }
+        
+        // Fallback to current facing direction if no intersection
+        return facingDirection ? facingDirection.clone() : new THREE.Vector3(0, 0, -1);
+    } catch (error) {
+        console.error("Error calculating aim direction:", error);
+        return new THREE.Vector3(0, 0, -1);
+    }
 }
 
 // Calculate movement direction based on key states
