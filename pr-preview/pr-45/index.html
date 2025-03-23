@@ -55,6 +55,28 @@
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+    // Define PLATFORM_RADIUS globally to avoid reference errors
+    const PLATFORM_RADIUS = 10;
+    
+    // Global error handler for animation errors
+    window.addEventListener('error', function(event) {
+        console.error('Global error caught:', event.error);
+        
+        // If the error is related to animation frame, try to recover
+        if (event.error && event.error.message && 
+            (event.error.message.includes('animation') || 
+             event.error.message.includes('requestAnimationFrame'))) {
+            
+            // Try to cancel any pending animation frames
+            if (window.animationFrameId) {
+                cancelAnimationFrame(window.animationFrameId);
+            }
+        }
+        
+        return false;
+    });
+</script>
     <script src="physics.js"></script>
     <script src="characters.js"></script>
     <script src="bullets.js"></script>
