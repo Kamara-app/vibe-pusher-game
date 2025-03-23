@@ -84,25 +84,56 @@ function createObstacles(platformRadius) {
     }
     obstacles = [];
     
-    // Create 4 obstacles
-    const obstaclePositions = [
-        { x: 4, z: 4 },
-        { x: -5, z: 2 },
-        { x: 0, z: -6 },
-        { x: -3, z: -4 }
+    // Create obstacles with movement properties
+    const obstacleConfigs = [
+        { 
+            pos: { x: 4, z: 4 },
+            type: { type: 'box', width: 1.5, height: 2, depth: 1.5, color: 0x8B4513 },
+            movement: { 
+                pattern: 'linear', 
+                speed: 0.03, 
+                direction: new THREE.Vector3(-1, 0, 0),
+                maxDistance: 6
+            }
+        },
+        { 
+            pos: { x: -5, z: 2 },
+            type: { type: 'cylinder', radius: 1, height: 2, color: 0x708090 },
+            movement: { 
+                pattern: 'circular', 
+                speed: 0.02, 
+                radius: 3,
+                angle: 0
+            }
+        },
+        { 
+            pos: { x: 0, z: -6 },
+            type: { type: 'box', width: 2, height: 1.5, depth: 1, color: 0x8B4513 },
+            movement: { 
+                pattern: 'zigzag', 
+                speed: 0.04, 
+                direction: new THREE.Vector3(1, 0, 1).normalize(),
+                changeTimer: 0,
+                changeInterval: 2000
+            }
+        },
+        { 
+            pos: { x: -3, z: -4 },
+            type: { type: 'cylinder', radius: 0.8, height: 3, color: 0x708090 },
+            movement: { 
+                pattern: 'bounce', 
+                speed: 0.05, 
+                direction: new THREE.Vector3(0.7, 0, 0.7).normalize(),
+                originalPos: { x: -3, z: -4 }
+            }
+        }
     ];
     
-    const obstacleTypes = [
-        { type: 'box', width: 1.5, height: 2, depth: 1.5, color: 0x8B4513 },
-        { type: 'cylinder', radius: 1, height: 2, color: 0x708090 },
-        { type: 'box', width: 2, height: 1.5, depth: 1, color: 0x8B4513 },
-        { type: 'cylinder', radius: 0.8, height: 3, color: 0x708090 }
-    ];
-    
-    for (let i = 0; i < obstaclePositions.length; i++) {
+    for (let i = 0; i < obstacleConfigs.length; i++) {
         let obstacle;
-        const pos = obstaclePositions[i];
-        const type = obstacleTypes[i];
+        const config = obstacleConfigs[i];
+        const pos = config.pos;
+        const type = config.type;
         
         // Make sure obstacle is within platform radius
         const distanceFromCenter = Math.sqrt(pos.x * pos.x + pos.z * pos.z);
@@ -128,7 +159,30 @@ function createObstacles(platformRadius) {
             obstacle.userData.radius = type.radius;
         }
         
+        // Set initial position
         obstacle.position.set(pos.x, platform.position.y + type.height/2, pos.z);
+        
+        // Store movement properties in userData
+        obstacle.userData.movement = config.movement;
+        
+        // For bounce pattern, store original position
+        if (config.movement.pattern === 'bounce') {
+            obstacle.userData.movement.originalPos = {
+                x: obstacle.position.x,
+                z: obstacle.position.z
+            };
+        }
+        
+        // For linear pattern, store starting position for distance calculation
+        if (config.movement.pattern === 'linear') {
+            obstacle.userData.movement.startPos = {
+                x: obstacle.position.x,
+                z: obstacle.position.z
+            };
+            obstacle.userData.movement.currentDistance = 0;
+            obstacle.userData.movement.movingForward = true;
+        }
+        
         scene.add(obstacle);
         obstacles.push(obstacle);
     }
@@ -209,12 +263,145 @@ function updateCharacter() {
     camera.lookAt(character.position);
 }
 
+// Update obstacle positions based on their movement patterns
+function updateObstacles() {
+    for (let i = 0; i < obstacles.length; i++) {
+        const obstacle = obstacles[i];
+        const movement = obstacle.userData.movement;
+        
+        if (!movement) continue;
+        
+        switch (movement.pattern) {
+            case 'linear':
+                // Linear back-and-forth movement
+                if (movement.movingForward) {
+                    obstacle.position.x += movement.direction.x * movement.speed;
+                    obstacle.position.z += movement.direction.z * movement.speed;
+                    movement.currentDistance += movement.speed;
+                    
+                    if (movement.currentDistance >= movement.maxDistance) {
+                        movement.movingForward = false;
+                    }
+                } else {
+                    obstacle.position.x -= movement.direction.x * movement.speed;
+                    obstacle.position.z -= movement.direction.z * movement.speed;
+                    movement.currentDistance -= movement.speed;
+                    
+                    if (movement.currentDistance <= 0) {
+                        movement.movingForward = true;
+                    }
+                }
+                break;
+                
+            case 'circular':
+                // Circular movement
+                movement.angle += movement.speed;
+                const newX = movement.startPos ? movement.startPos.x : obstacle.position.x;
+                const newZ = movement.startPos ? movement.startPos.z : obstacle.position.z;
+                
+                obstacle.position.x = newX + Math.cos(movement.angle) * movement.radius;
+                obstacle.position.z = newZ + Math.sin(movement.angle) * movement.radius;
+                break;
+                
+            case 'zigzag':
+                // Change direction periodically
+                const now = Date.now();
+                if (now - movement.changeTimer > movement.changeInterval) {
+                    // Rotate direction by a random angle
+                    const angle = (Math.random() * Math.PI/2) - Math.PI/4; // -45 to +45 degrees
+                    const cos = Math.cos(angle);
+                    const sin = Math.sin(angle);
+                    
+                    // Rotate the direction vector
+                    const newX = movement.direction.x * cos - movement.direction.z * sin;
+                    const newZ = movement.direction.x * sin + movement.direction.z * cos;
+                    
+                    movement.direction.x = newX;
+                    movement.direction.z = newZ;
+                    movement.direction.normalize();
+                    
+                    movement.changeTimer = now;
+                }
+                
+                // Move in current direction
+                obstacle.position.x += movement.direction.x * movement.speed;
+                obstacle.position.z += movement.direction.z * movement.speed;
+                
+                // Keep within platform bounds
+                const distanceFromCenter = Math.sqrt(
+                    Math.pow(obstacle.position.x, 2) + 
+                    Math.pow(obstacle.position.z, 2)
+                );
+                
+                if (distanceFromCenter > platform.userData.radius - 1) {
+                    // Reflect direction when hitting the edge
+                    const normal = new THREE.Vector3(
+                        obstacle.position.x, 
+                        0, 
+                        obstacle.position.z
+                    ).normalize();
+                    
+                    // Reflect direction vector around normal
+                    const dot = movement.direction.dot(normal);
+                    movement.direction.sub(normal.multiplyScalar(2 * dot));
+                    
+                    // Move slightly inward
+                    const inwardDir = normal.clone().multiplyScalar(-0.1);
+                    obstacle.position.x += inwardDir.x;
+                    obstacle.position.z += inwardDir.z;
+                }
+                break;
+                
+            case 'bounce':
+                // Move in current direction
+                obstacle.position.x += movement.direction.x * movement.speed;
+                obstacle.position.z += movement.direction.z * movement.speed;
+                
+                // Check if obstacle is too far from its original position
+                const distFromOrigin = Math.sqrt(
+                    Math.pow(obstacle.position.x - movement.originalPos.x, 2) + 
+                    Math.pow(obstacle.position.z - movement.originalPos.z, 2)
+                );
+                
+                // Check if obstacle is near platform edge
+                const distanceFromCenter = Math.sqrt(
+                    Math.pow(obstacle.position.x, 2) + 
+                    Math.pow(obstacle.position.z, 2)
+                );
+                
+                if (distFromOrigin > 6 || distanceFromCenter > platform.userData.radius - 1) {
+                    // Bounce back toward original position
+                    const toOrigin = new THREE.Vector3(
+                        movement.originalPos.x - obstacle.position.x,
+                        0,
+                        movement.originalPos.z - obstacle.position.z
+                    ).normalize();
+                    
+                    // Mix current direction with direction to origin
+                    movement.direction.x = (movement.direction.x + toOrigin.x) / 2;
+                    movement.direction.z = (movement.direction.z + toOrigin.z) / 2;
+                    movement.direction.normalize();
+                }
+                break;
+        }
+        
+        // Initialize startPos for circular movement if not set
+        if (movement.pattern === 'circular' && !movement.startPos) {
+            movement.startPos = {
+                x: obstacle.position.x,
+                z: obstacle.position.z
+            };
+        }
+    }
+}
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     
     if (gameActive) {
         updateCharacter();
+        updateObstacles();
         enemies = updateEnemies(enemies, enemySpeed, platform);
         checkCollisions(character, enemies, velocity);
         checkObstacleCollisions(character, obstacles);

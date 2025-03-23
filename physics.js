@@ -293,6 +293,7 @@ function checkObstacleCollisions(character, obstacles) {
     for (let i = 0; i < obstacles.length; i++) {
         const obstacle = obstacles[i];
         let collision = false;
+        let pushDirection = new THREE.Vector3();
         
         if (obstacle.userData.type === 'box') {
             // Box collision detection
@@ -312,6 +313,15 @@ function checkObstacleCollisions(character, obstacles) {
             );
             
             collision = distance < playerRadius;
+            
+            if (collision) {
+                // Calculate push direction from closest point on box
+                pushDirection.set(
+                    character.position.x - closestX,
+                    0,
+                    character.position.z - closestZ
+                ).normalize();
+            }
         } else if (obstacle.userData.type === 'cylinder') {
             // Cylinder collision detection
             const distance = Math.sqrt(
@@ -320,16 +330,61 @@ function checkObstacleCollisions(character, obstacles) {
             );
             
             collision = distance < (playerRadius + obstacle.userData.radius);
+            
+            if (collision) {
+                // Calculate push direction from center of cylinder
+                pushDirection.set(
+                    character.position.x - obstacle.position.x,
+                    0,
+                    character.position.z - obstacle.position.z
+                ).normalize();
+            }
         }
         
         if (collision) {
-            // Push character away from obstacle
-            const pushDirection = new THREE.Vector3()
-                .subVectors(character.position, obstacle.position)
-                .normalize();
+            // Get obstacle movement if it exists
+            const movement = obstacle.userData.movement;
+            let pushForce = 0.2; // Base push force
             
-            character.position.x += pushDirection.x * 0.2;
-            character.position.z += pushDirection.z * 0.2;
+            if (movement) {
+                // Add movement direction to push direction for moving obstacles
+                // This makes the push feel more realistic based on obstacle movement
+                const movementInfluence = 0.7; // How much the movement affects the push direction
+                
+                if (movement.pattern === 'linear' || movement.pattern === 'zigzag' || movement.pattern === 'bounce') {
+                    // For directional movement, add the movement direction to the push
+                    const movementDir = movement.direction.clone();
+                    pushDirection.add(movementDir.multiplyScalar(movementInfluence));
+                    pushDirection.normalize();
+                    
+                    // Increase push force based on obstacle speed
+                    pushForce += movement.speed * 2;
+                } else if (movement.pattern === 'circular') {
+                    // For circular movement, calculate tangent direction
+                    const centerToObstacle = new THREE.Vector3(
+                        obstacle.position.x - movement.startPos.x,
+                        0,
+                        obstacle.position.z - movement.startPos.z
+                    );
+                    
+                    // Tangent is perpendicular to radius
+                    const tangent = new THREE.Vector3(-centerToObstacle.z, 0, centerToObstacle.x).normalize();
+                    
+                    pushDirection.add(tangent.multiplyScalar(movementInfluence));
+                    pushDirection.normalize();
+                    
+                    // Increase push force based on obstacle speed and radius
+                    pushForce += movement.speed * movement.radius;
+                }
+            }
+            
+            // Apply push to character
+            character.position.x += pushDirection.x * pushForce;
+            character.position.z += pushDirection.z * pushForce;
+            
+            // Add a small impulse to velocity in the push direction
+            velocity.x += pushDirection.x * pushForce * 0.5;
+            velocity.z += pushDirection.z * pushForce * 0.5;
         }
     }
 }
