@@ -245,10 +245,32 @@ function resetGame() {
 
 // Update character state
 function updateCharacter() {
-    // Apply physics
-    if (!applyPhysics(character, velocity, platform)) {
-        gameOver();
-        return;
+    // Apply physics - with safety check
+    if (typeof applyPhysics === 'function') {
+        if (!applyPhysics(character, velocity, platform)) {
+            gameOver();
+            return;
+        }
+    } else {
+        // Fallback physics if applyPhysics is not defined
+        velocity.y -= 0.01; // Simple gravity
+        character.position.y += velocity.y;
+        
+        // Simple platform collision
+        if (character.position.y < platform.position.y + 1) {
+            character.position.y = platform.position.y + 1;
+            velocity.y = 0;
+        }
+        
+        // Check if character is on platform
+        const distanceFromCenter = Math.sqrt(
+            Math.pow(character.position.x, 2) + 
+            Math.pow(character.position.z, 2)
+        );
+        
+        if (distanceFromCenter > platform.userData.radius) {
+            return false; // Character fell off
+        }
     }
     
     // Update character position based on controls
@@ -308,20 +330,40 @@ function animate() {
         window.animationFrameId = requestAnimationFrame(animate);
         
         if (gameActive) {
-            updateCharacter();
+            try {
+                updateCharacter();
+            } catch (e) {
+                console.error("Error updating character:", e);
+                // Try to recover character position if there's an error
+                if (character && platform) {
+                    character.position.y = platform.position.y + 1;
+                }
+            }
             
             // Update game elements with error handling
-            try { enemies = updateEnemies(enemies, enemySpeed, platform); } 
-            catch (e) { console.error("Error updating enemies:", e); }
+            try { 
+                if (typeof updateEnemies === 'function') {
+                    enemies = updateEnemies(enemies, enemySpeed, platform); 
+                }
+            } catch (e) { console.error("Error updating enemies:", e); }
             
-            try { bullets = updateBullets(bullets, scene, enemies); } 
-            catch (e) { console.error("Error updating bullets:", e); }
+            try { 
+                if (typeof updateBullets === 'function') {
+                    bullets = updateBullets(bullets, scene, enemies); 
+                }
+            } catch (e) { console.error("Error updating bullets:", e); }
             
-            try { checkCollisions(character, enemies, velocity); } 
-            catch (e) { console.error("Error checking collisions:", e); }
+            try { 
+                if (typeof checkCollisions === 'function') {
+                    checkCollisions(character, enemies, velocity); 
+                }
+            } catch (e) { console.error("Error checking collisions:", e); }
             
-            try { checkObstacleCollisions(character, obstacles); } 
-            catch (e) { console.error("Error checking obstacle collisions:", e); }
+            try { 
+                if (typeof checkObstacleCollisions === 'function') {
+                    checkObstacleCollisions(character, obstacles); 
+                }
+            } catch (e) { console.error("Error checking obstacle collisions:", e); }
         }
         
         // Render scene
