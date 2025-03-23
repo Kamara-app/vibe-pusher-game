@@ -41,6 +41,57 @@
             font-size: 16px;
             cursor: pointer;
         }
+        /* Mobile controls */
+        .mobile-controls {
+            display: none; /* Hidden by default, shown on touch devices */
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 150px;
+            z-index: 100;
+            pointer-events: none; /* Allow clicks to pass through the container */
+        }
+        #joystick-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            border-radius: 60px;
+            background-color: rgba(255, 255, 255, 0.2);
+            pointer-events: auto; /* Enable clicks on this element */
+            touch-action: none; /* Prevent browser handling of touch events */
+        }
+        #joystick {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+        #push-button {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50px;
+            background-color: rgba(255, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            pointer-events: auto; /* Enable clicks on this element */
+            touch-action: none; /* Prevent browser handling of touch events */
+        }
+        #push-button.cooldown {
+            background-color: rgba(100, 100, 100, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -51,6 +102,14 @@
     <div id="gameOver">
         <h2>You fell off the platform!</h2>
         <button id="resetButton">Reset Game</button>
+    </div>
+    
+    <!-- Mobile Controls -->
+    <div class="mobile-controls" id="mobile-controls">
+        <div id="joystick-container">
+            <div id="joystick"></div>
+        </div>
+        <div id="push-button">PUSH</div>
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

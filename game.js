@@ -57,6 +57,14 @@ function init() {
     // Add reset button functionality
     document.getElementById('resetButton').addEventListener('click', resetGame);
     
+    // Update mobile controls info if on touch device
+    if (isTouchDevice) {
+        const infoElement = document.getElementById('info');
+        if (infoElement) {
+            infoElement.innerHTML = 'Use the joystick to move, tap the PUSH button to attack<br>Push enemies off the platform to win!';
+        }
+    }
+    
     // Start animation loop
     animate();
 }
