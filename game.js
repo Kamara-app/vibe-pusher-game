@@ -13,7 +13,8 @@ let smileyFace, pushArm, cooldownIndicator;
 let enemies = [];
 const enemyCount = 5;
 const enemySpeed = 0.1;
-const enemySize = 0.4;
+const enemyMinSize = 0.3;
+const enemyMaxSize = 0.7;
 const enemyColor = 0xFF0000;
 
 // Initialize the game
@@ -90,7 +91,7 @@ function initializeEnemies() {
     enemies = [];
     
     // Create new enemies
-    enemies = createEnemies(scene, platform, enemyCount, enemySize, enemyColor);
+    enemies = createEnemies(scene, platform, enemyCount, enemyMinSize, enemyMaxSize, enemyColor);
 }
 
 // Game over function
