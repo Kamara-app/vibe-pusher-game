@@ -138,6 +138,7 @@ function createHitEffect(scene, position) {
     // Animate the flash effect
     const startTime = Date.now();
     const duration = 300; // milliseconds
+    let animationFrameId;
     
     function animateFlash() {
         const elapsed = Date.now() - startTime;
@@ -145,9 +146,18 @@ function createHitEffect(scene, position) {
             const scale = 1 + elapsed / duration;
             flash.scale.set(scale, scale, scale);
             flash.material.opacity = 0.8 * (1 - elapsed / duration);
-            requestAnimationFrame(animateFlash);
+            animationFrameId = requestAnimationFrame(animateFlash);
         } else {
             scene.remove(flash);
+            cancelAnimationFrame(animationFrameId);
+            
+            // Clean up materials to prevent memory leaks
+            if (flash.material) {
+                flash.material.dispose();
+            }
+            if (flashGeometry) {
+                flashGeometry.dispose();
+            }
         }
     }
     
@@ -205,10 +215,24 @@ function createAimIndicator(scene) {
     const verticalLine = new THREE.Line(verticalGeometry, lineMaterial);
     aimGroup.add(verticalLine);
     
-    // Create a small circle
-    const circleGeometry = new THREE.CircleGeometry(0.1, 16);
-    circleGeometry.vertices.shift(); // Remove center vertex
-    const circle = new THREE.Line(circleGeometry, lineMaterial);
+    // Create a small circle using points
+    const circlePoints = [];
+    const radius = 0.1;
+    const segments = 16;
+    
+    for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * Math.PI * 2;
+        circlePoints.push(
+            new THREE.Vector3(
+                Math.cos(theta) * radius,
+                Math.sin(theta) * radius,
+                0
+            )
+        );
+    }
+    
+    const circleGeometry = new THREE.BufferGeometry().setFromPoints(circlePoints);
+    const circle = new THREE.LineLoop(circleGeometry, lineMaterial);
     aimGroup.add(circle);
     
     // Make aim indicator invisible initially
