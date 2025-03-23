@@ -18,6 +18,11 @@ const enemyMinSize = 0.3;
 const enemyMaxSize = 0.7;
 const enemyColor = 0xFF0000;
 
+// Bullet variables
+let bullets = [];
+let aimIndicator;
+let raycaster = new THREE.Raycaster();
+
 // Initialize the game
 function init() {
     // Create scene
@@ -141,6 +146,7 @@ function initializeCharacter() {
     smileyFace = createDirectionIndicator(scene);
     pushArm = createPushArm(scene);
     cooldownIndicator = createCooldownIndicator(scene);
+    aimIndicator = createAimIndicator(scene);
     
     // Position the smiley face in front of the character
     updateSmileyPosition(smileyFace, character, facingDirection);
@@ -176,7 +182,15 @@ function resetGame() {
     facingDirection.set(0, 0, -1); // Reset facing direction
     isPushing = false;
     pushCooldown = false;
+    isShooting = false;
+    shootCooldown = false;
     document.getElementById('gameOver').style.display = 'none';
+    
+    // Clear bullets
+    for (let i = 0; i < bullets.length; i++) {
+        scene.remove(bullets[i]);
+    }
+    bullets = [];
     
     // Recreate enemies
     initializeEnemies();
@@ -193,6 +207,12 @@ function updateCharacter() {
     // Update character position based on controls
     updateCharacterPosition(character, speed, velocity, platform);
     
+    // Calculate aim direction
+    const aimDirection = calculateAimDirection();
+    
+    // Update character rotation based on aim direction
+    updateCharacterAim(character, aimDirection);
+    
     // Update smiley face position
     updateSmileyPosition(smileyFace, character, facingDirection);
     
@@ -201,6 +221,23 @@ function updateCharacter() {
     
     // Update cooldown indicator - make sure to pass camera for proper orientation
     updateCooldownIndicator(cooldownIndicator, character, pushCooldown, lastPushTime, PUSH_COOLDOWN_TIME);
+    
+    // Update aim indicator
+    if (isAiming) {
+        // Cast a ray from the camera through the mouse position
+        raycaster.setFromCamera(mousePosition, camera);
+        
+        // Calculate the point where the ray intersects the platform plane
+        const platformPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -platform.position.y);
+        const targetPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(platformPlane, targetPoint);
+        
+        // Update aim indicator position
+        aimIndicator.visible = true;
+        updateAimIndicator(aimIndicator, targetPoint, new THREE.Vector3(0, 1, 0));
+    } else {
+        aimIndicator.visible = false;
+    }
     
     // Update camera to follow character - adjusted to be more from above
     camera.position.x = character.position.x;
@@ -216,6 +253,7 @@ function animate() {
     if (gameActive) {
         updateCharacter();
         enemies = updateEnemies(enemies, enemySpeed, platform);
+        bullets = updateBullets(bullets, scene, enemies);
         checkCollisions(character, enemies, velocity);
         checkObstacleCollisions(character, obstacles);
     }

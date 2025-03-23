@@ -10,11 +10,27 @@ let pushCooldown = false;
 let lastPushTime = 0;
 const PUSH_COOLDOWN_TIME = 500; // 500ms cooldown
 
+// Shooting controls
+let isShooting = false;
+let shootCooldown = false;
+let lastShootTime = 0;
+const SHOOT_COOLDOWN_TIME = 300; // 300ms cooldown
+let mousePosition = new THREE.Vector2();
+let isAiming = false;
+
 // Initialize controls
 function initControls() {
     document.addEventListener('keydown', onKeyDown, false);
     document.addEventListener('keyup', onKeyUp, false);
     window.addEventListener('resize', onWindowResize, false);
+    
+    // Add mouse event listeners for shooting
+    document.addEventListener('mousemove', onMouseMove, false);
+    document.addEventListener('mousedown', onMouseDown, false);
+    document.addEventListener('mouseup', onMouseUp, false);
+    
+    // Prevent context menu on right click
+    document.addEventListener('contextmenu', (event) => event.preventDefault(), false);
 }
 
 // Handle key down events
@@ -89,6 +105,79 @@ function onKeyUp(event) {
             moveRight = false;
             break;
     }
+}
+
+// Handle mouse move events
+function onMouseMove(event) {
+    // Calculate normalized device coordinates (-1 to +1)
+    mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    // Set aiming flag
+    isAiming = true;
+}
+
+// Handle mouse down events
+function onMouseDown(event) {
+    if (!gameActive) return;
+    
+    // Left mouse button (0) for shooting
+    if (event.button === 0) {
+        // Only shoot if not on cooldown
+        if (!shootCooldown) {
+            isShooting = true;
+            shootCooldown = true;
+            lastShootTime = Date.now();
+            
+            // Get aim direction from mouse position
+            const aimDirection = calculateAimDirection();
+            
+            // Create a bullet
+            const newBullet = createBullet(scene, character.position.clone(), aimDirection);
+            bullets.push(newBullet);
+            
+            // Reset shooting state after a short delay
+            setTimeout(() => {
+                isShooting = false;
+            }, 100);
+            
+            // Reset cooldown after the specified time
+            setTimeout(() => {
+                shootCooldown = false;
+            }, SHOOT_COOLDOWN_TIME);
+        }
+    }
+}
+
+// Handle mouse up events
+function onMouseUp(event) {
+    // Left mouse button (0) for shooting
+    if (event.button === 0) {
+        isShooting = false;
+    }
+}
+
+// Calculate aim direction from mouse position
+function calculateAimDirection() {
+    // Create a raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+    
+    // Calculate the point where the ray intersects the platform plane
+    const platformPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -platform.position.y);
+    const targetPoint = new THREE.Vector3();
+    raycaster.ray.intersectPlane(platformPlane, targetPoint);
+    
+    // Calculate direction from character to target point
+    const direction = new THREE.Vector3()
+        .subVectors(targetPoint, character.position)
+        .normalize();
+    
+    // Keep the direction horizontal (y = 0)
+    direction.y = 0;
+    direction.normalize();
+    
+    return direction;
 }
 
 // Calculate movement direction based on key states
@@ -196,5 +285,20 @@ function updateCharacterSprite(direction) {
         if (character.eyes && character.eyes.rotation) {
             character.eyes.rotation.x = 0;
         }
+    }
+}
+
+// Update character rotation based on aim direction
+function updateCharacterAim(character, aimDirection) {
+    // Only update rotation if we're aiming and not moving
+    if (isAiming && calculateMovementDirection().length() === 0) {
+        // Calculate angle from aim direction
+        const angle = Math.atan2(aimDirection.x, aimDirection.z);
+        
+        // Update character rotation
+        character.mesh.rotation.y = angle;
+        
+        // Update facing direction to match aim direction
+        facingDirection.copy(aimDirection);
     }
 }
