@@ -17,19 +17,26 @@ function applyPhysics(character, velocity, platform) {
     // Store previous position before applying physics
     const previousY = character.position.y;
     
-    // Check if character is on the platform
-    if (!isOnPlatform(character, platform) || velocity.y < 0) {
-        // Apply gravity only if not on platform or already falling
+    // Always apply gravity unless character is confirmed to be on platform
+    const onPlatform = isOnPlatform(character, platform);
+    if (!onPlatform) {
+        // Apply gravity when not on platform
         velocity.y -= GRAVITY;
         character.position.y += velocity.y * 0.1;
     }
     
-    // Check if character is on the ground
-    // Only set position when falling onto platform from above (velocity.y < 0)
+    // Check if character is on the ground or should land on it
+    // Character lands if they're at or below platform height, falling, and above the platform horizontally
+    const distanceFromCenter = Math.sqrt(
+        Math.pow(character.position.x - platform.position.x, 2) + 
+        Math.pow(character.position.z - platform.position.z, 2)
+    );
+    const isAbovePlatform = distanceFromCenter <= PLATFORM_RADIUS;
+    
     if (character.position.y <= platform.position.y + PLATFORM_HEIGHT && 
         velocity.y <= 0 && 
-        isOnPlatform(character, platform)) {
-        character.position.y = platform.position.y + PLATFORM_HEIGHT; // platform height + half character height
+        isAbovePlatform) {
+        character.position.y = platform.position.y + PLATFORM_HEIGHT;
         velocity.y = 0;
     }
     
@@ -68,8 +75,8 @@ function applyEnemyPhysics(enemy, platform) {
     // Check if enemy is on the platform
     const onPlatform = isOnPlatform(enemy, platform);
     
-    // If enemy is not on platform or is already falling, apply gravity
-    if (!onPlatform || enemy.userData.velocity.y < 0) {
+    // Always apply gravity unless enemy is confirmed to be on platform
+    if (!onPlatform) {
         // Apply gravity
         enemy.userData.velocity.y -= GRAVITY;
         enemy.position.y += enemy.userData.velocity.y * 0.1;
@@ -78,11 +85,17 @@ function applyEnemyPhysics(enemy, platform) {
         enemy.userData.isFalling = true;
     }
     
-    // Check if enemy is on the ground
-    // Only set position when falling onto platform from above (velocity.y < 0)
+    // Check if enemy is on the ground or should land on it
+    // Calculate if enemy is above platform horizontally
+    const distanceFromCenter = Math.sqrt(
+        Math.pow(enemy.position.x - platform.position.x, 2) + 
+        Math.pow(enemy.position.z - platform.position.z, 2)
+    );
+    const isAbovePlatform = distanceFromCenter <= PLATFORM_RADIUS;
+    
     if (enemy.position.y <= platform.position.y + PLATFORM_HEIGHT && 
-        (enemy.userData.velocity.y <= 0 || enemy.userData.isOnPlatform) && 
-        onPlatform) {
+        enemy.userData.velocity.y <= 0 && 
+        isAbovePlatform) {
         
         enemy.position.y = platform.position.y + PLATFORM_HEIGHT;
         enemy.userData.velocity.y = 0;
@@ -210,9 +223,9 @@ function isOnPlatform(character, platform) {
     const isAbovePlatform = distanceFromCenter <= PLATFORM_RADIUS;
     
     // Check vertical position (y coordinate)
-    // Character is considered on platform if they're at or very slightly above platform height
+    // Character is considered on platform if they're at the platform height (with minimal tolerance)
     const isAtPlatformHeight = (
-        Math.abs(character.position.y - (platform.position.y + PLATFORM_HEIGHT)) < 0.1
+        Math.abs(character.position.y - (platform.position.y + PLATFORM_HEIGHT)) < 0.05
     );
     
     return isAbovePlatform && isAtPlatformHeight;
